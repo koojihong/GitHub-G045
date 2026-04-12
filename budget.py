@@ -14,4 +14,3 @@ while True:
 
 print("Welcome to BudgetBee", user_name)
 print("Your starting balance is $", balance)
-
