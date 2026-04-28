@@ -4,6 +4,69 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Budget Bee — Dashboard</title>
+
+<script>
+// Load data from Python when page opens
+function loadData() {
+    fetch("/api/data")
+        .then(res => res.json())
+        .then(data => {
+            // Fill metric cards
+            document.getElementById("metrics-grid").innerHTML = `
+                <div class="metric-card">
+                    <div class="metric-label">Income</div>
+                    <div class="metric-value green">$${data.income}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Total Spent</div>
+                    <div class="metric-value red">$${data.spent}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Balance</div>
+                    <div class="metric-value honey">$${data.balance}</div>
+                </div>
+            `;
+
+            // Fill transactions list
+            let txHTML = "";
+            data.transactions.forEach(t => {
+                txHTML += `
+                    <div class="tx-row">
+                        <div class="tx-icon">💸</div>
+                        <div class="tx-info">
+                            <div class="tx-desc">${t.desc}</div>
+                            <div class="tx-meta">${t.category}</div>
+                        </div>
+                        <div class="tx-amt">-$${t.amount}</div>
+                    </div>
+                `;
+            });
+            document.getElementById("tx-list").innerHTML = 
+                txHTML || "<p style='color:var(--muted);font-size:13px'>No transactions yet</p>";
+        });
+}
+
+// Add a new transaction
+function addTransaction() {
+    const desc = document.getElementById("tx-desc").value;
+    const amount = document.getElementById("tx-amount").value;
+    const category = document.getElementById("tx-category").value;
+
+    fetch("/api/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ desc, amount, category })
+    })
+    .then(res => res.json())
+    .then(() => {
+        loadData();  // refresh the dashboard
+    });
+}
+
+// Load data when page first opens
+loadData();
+</script>
+
 <style>
 :root {
   --honey:    #C47B0E;
@@ -349,4 +412,31 @@ body {
     </div>
   </div>
 
-</div><!-- /main -->
+</div><!-- /main -->\
+
+<!-- TRANSACTION PANEL -->
+
+<div class="panel" style="margin-bottom:20px">
+    <div class="panel-header">
+        <div class="panel-title">Add Transaction</div>
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap">
+        <input id="tx-desc" placeholder="Description" 
+               style="flex:1; padding:8px 12px; border-radius:8px; border:1px solid var(--border); font-family:inherit">
+        <input id="tx-amount" placeholder="Amount" type="number"
+               style="width:120px; padding:8px 12px; border-radius:8px; border:1px solid var(--border); font-family:inherit">
+        <select id="tx-category"
+                style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); font-family:inherit">
+            <option>Food</option>
+            <option>Housing</option>
+            <option>Transport</option>
+            <option>Shopping</option>
+            <option>Health</option>
+            <option>Other</option>
+        </select>
+        <button onclick="addTransaction()"
+                style="padding:8px 18px; background:var(--honey); color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600">
+            + Add
+        </button>
+    </div>
+</div>

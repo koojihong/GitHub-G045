@@ -1,16 +1,42 @@
 # Budget Tracker
-user_name = input("How can we call you?")
-transaction = []
+from flask import Flask, jsonify, render_template, request
 
-while True:
-    try:
-        balance = float(input("Please enter your starting balance:"))
-        if balance <= 0:
-                print ("Please enter a number more than 0")
-        else: 
-                break
-    except ValueError:
-        print("Invalid Value. Please enter a number")
+app = Flask(__name__)
 
-print("Welcome to BudgetBee", user_name)
-print("Your starting balance is $", balance)
+# This is "database"
+transactions = []
+budget_limit = 2000
+income = 3000
+
+# Serve the dashboard page
+@app.route("/")
+def dashboard():
+    return render_template("dashboard.html")
+
+# GET all budget data
+@app.route("/api/data")
+def get_data():
+    total_spent = sum(t["amount"] for t in transactions)
+    balance = income - total_spent
+
+    return jsonify({
+        "income": income,
+        "spent": total_spent,
+        "balance": balance,
+        "limit": budget_limit,
+        "transactions": transactions
+    })
+
+# POST a new transaction
+@app.route("/api/add", methods=["POST"])
+def add_transaction():
+    data = request.get_json()
+    transactions.append({
+        "desc": data["desc"],
+        "amount": float(data["amount"]),
+        "category": data["category"]
+    })
+    return jsonify({"status": "ok"})
+
+if __name__ == "__main__":
+    app.run(debug=True)
