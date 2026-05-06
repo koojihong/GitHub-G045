@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Budget Bee — Create Account</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --honey:    #D4870A;
+  --honey-dk: #9A5E04;
+  --honey-lt: #FFF0CC;
+  --amber:    #F5A623;
+  --dark:     #1A1006;
+  --dark2:    #2C1D0A;
+  --cream:    #FEFAF2;
+  --muted:    #A8937A;
+  --border:   rgba(212,135,10,0.2);
+  --red:      #C0392B;
+  --green:    #1E7E4A;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--cream);
+  display: flex;
+  align-items: stretch;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* ── LEFT PANEL ─────────────────────────── */
+.left-panel {
+  width: 420px;
+  flex-shrink: 0;
+  background: var(--dark2);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px;
+  overflow: hidden;
+}
+.left-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 80% 80%, rgba(212,135,10,0.18) 0%, transparent 55%),
+    radial-gradient(circle at 20% 20%, rgba(245,166,35,0.08) 0%, transparent 50%);
+}
+.hex-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V18L28 2l28 16v32L28 66zm0-6l22-12.7V20.7L28 8 6 20.7v26.6L28 60z' fill='%23D4870A'/%3E%3Cpath d='M28 100l-28-16V68l28 16 28-16v16z' fill='%23D4870A'/%3E%3C/svg%3E");
+}
+
+.brand { position: relative; z-index: 1; }
+.brand-logo {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 48px;
+}
+.bee-icon {
+  width: 44px; height: 44px;
+  background: var(--honey); border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 4px 20px rgba(212,135,10,0.4);
+}
+.brand-name { font-family: 'DM Serif Display', serif; font-size: 22px; color: #fff; }
+.brand-headline {
+  font-family: 'DM Serif Display', serif;
+  font-size: 36px; line-height: 1.2; color: #fff;
+  margin-bottom: 20px; letter-spacing: -0.5px;
+}
+.brand-headline em { color: var(--amber); font-style: italic; }
+.brand-body { font-size: 14px; color: rgba(255,255,255,0.5); line-height: 1.75; margin-bottom: 40px; }
+
+/* Steps */
+.steps { position: relative; z-index: 1; }
+.step { display: flex; gap: 16px; margin-bottom: 24px; }
+.step-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(212,135,10,0.25); border: 1.5px solid rgba(212,135,10,0.5);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; color: var(--amber);
+  flex-shrink: 0; margin-top: 1px;
+}
+.step-text { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.6; }
+.step-text strong { color: rgba(255,255,255,0.85); }
+
+/* ── RIGHT PANEL ─────────────────────────── */
+.right-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: var(--cream);
+  overflow-y: auto;
+}
+.right-panel::before {
+  content: '';
+  position: absolute;
+  right: 0; top: 0;
+  width: 60%; height: 100%;
+  background: radial-gradient(circle at 70% 40%, rgba(212,135,10,0.05) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.form-card {
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  z-index: 1;
+  animation: slideUp 0.5s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes slideUp {
+  from { opacity:0; transform:translateY(24px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+.form-header { margin-bottom: 32px; }
+.form-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 30px; color: var(--dark);
+  margin-bottom: 8px; letter-spacing: -0.5px;
+}
+.form-sub { font-size: 14px; color: var(--muted); }
+
+/* ── FIELDS ─────────────────────────────── */
+.field { margin-bottom: 18px; }
+.field label {
+  display: block; font-size: 13px; font-weight: 500;
+  color: var(--dark); margin-bottom: 7px;
+}
+.field-wrap { position: relative; }
+.field-icon {
+  position: absolute; left: 14px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 15px; color: var(--muted); pointer-events: none;
+}
+.field input {
+  width: 100%;
+  padding: 12px 14px 12px 42px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px; color: var(--dark);
+  transition: all 0.2s; outline: none;
+}
+.field input::placeholder { color: #c5b8a8; }
+.field input:focus { border-color: var(--honey); box-shadow: 0 0 0 3px rgba(212,135,10,0.12); }
+.field input.error-field { border-color: var(--red); }
+
+/* Row of two fields side by side */
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* Password strength meter */
+.pw-strength { margin-top: 8px; }
+.pw-bar-bg { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.pw-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s, background 0.3s; }
+.pw-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* ── BUTTON ─────────────────────────────── */
+.btn-submit {
+  width: 100%;
+  padding: 14px;
+  background: var(--honey); color: #fff;
+  border: none; border-radius: 12px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer; margin-top: 4px;
+  transition: all 0.2s;
+  position: relative; overflow: hidden;
+}
+.btn-submit::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+}
+.btn-submit:hover { background: var(--honey-dk); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(212,135,10,0.35); }
+.btn-submit:active { transform: translateY(0); }
+
+/* ── TERMS ──────────────────────────────── */
+.terms {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 12px; color: var(--muted); margin: 16px 0;
+  line-height: 1.5;
+}
+.terms input { accent-color: var(--honey); margin-top: 2px; flex-shrink: 0; }
+.terms a { color: var(--honey); text-decoration: none; }
+.terms a:hover { text-decoration: underline; }
+
+/* ── ALERTS ─────────────────────────────── */
+.alert {
+  padding: 12px 16px; border-radius: 10px;
+  font-size: 13.5px; margin-bottom: 18px;
+  display: flex; align-items: center; gap: 10px;
+}
+.alert.error   { background: #fef2f2; color: var(--red);   border: 1px solid #fca5a5; animation: shake .4s ease; }
+.alert.success { background: #f0fdf4; color: var(--green); border: 1px solid #86efac; }
+@keyframes shake {
+  0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)}   60%{transform:translateX(-4px)} 80%{transform:translateX(4px)}
+}
+
+/* ── FOOTER ─────────────────────────────── */
+.divider { display: flex; align-items: center; gap: 12px; margin: 20px 0 16px; }
+.divider-line { flex: 1; height: 1px; background: var(--border); }
+.divider-text { font-size: 12px; color: var(--muted); }
+
+.form-footer { text-align: center; font-size: 14px; color: var(--muted); }
+.form-footer a { color: var(--honey); text-decoration: none; font-weight: 500; }
+.form-footer a:hover { color: var(--honey-dk); text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<!-- LEFT PANEL -->
+<div class="left-panel">
+  <div class="hex-grid"></div>
+  <div class="brand">
+    <div class="brand-logo">
+      <div class="bee-icon">🐝</div>
+      <div class="brand-name">Budget Bee</div>
+    </div>
+    <div class="brand-headline">
+      Start your journey to <em>smarter</em> spending
+    </div>
+    <p class="brand-body">
+      Join thousands of students and working individuals who track their
+      finances with Budget Bee. Free forever.
+    </p>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text"><strong>Create your account</strong> — just your name, email, and a password</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text"><strong>Set your monthly budget</strong> — tell us your spending limit</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text"><strong>Log expenses daily</strong> — takes less than 10 seconds each</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text"><strong>Watch your dashboard</strong> — insights update in real time</div>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="right-panel">
+  <div class="form-card">
+    <div class="form-header">
+      <div class="form-title">Create your account</div>
+      <div class="form-sub">It's free and takes less than a minute</div>
+    </div>
+
+
+
+
+
+    <form method="POST" action="/register">
+      <div class="field">
+        <label for="username">Full name</label>
+        <div class="field-wrap">
+          <span class="field-icon">👤</span>
+          <input type="text" id="username" name="username" placeholder="Charlie Krik" required minlength="3"
+                 value=""/>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="email">Email address</label>
+        <div class="field-wrap">
+          <span class="field-icon">✉</span>
+          <input type="email" id="email" name="email" placeholder="charlie@example.com" required
+                 value=""/>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="field-wrap">
+            <span class="field-icon">🔒</span>
+            <input type="password" id="password" name="password" placeholder="Min 6 chars" required minlength="6"
+                   oninput="checkStrength(this.value)"/>
+          </div>
+          <div class="pw-strength">
+            <div class="pw-bar-bg"><div class="pw-bar-fill" id="pw-bar" style="width:0%;background:#e5e7eb"></div></div>
+            <div class="pw-label" id="pw-label">Enter a password</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="confirm">Confirm password</label>
+          <div class="field-wrap">
+            <span class="field-icon">🔑</span>
+            <input type="password" id="confirm" name="confirm" placeholder="Repeat password" required/>
+          </div>
+        </div>
+      </div>
+
+      <label class="terms">
+        <input type="checkbox" required/>
+        I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+      </label>
+
+      <button type="submit" class="btn-submit">Create Account →</button>
+    </form>
+
+    <div class="divider">
+      <div class="divider-line"></div>
+      <span class="divider-text">Already have an account?</span>
+      <div class="divider-line"></div>
+    </div>
+
+    <div class="form-footer">
+      <a href="login.html">← Back to sign in</a>
+    </div>
+  </div>
+</div>
+
+<script>
+function checkStrength(pw) {
+  const bar   = document.getElementById('pw-bar');
+  const label = document.getElementById('pw-label');
+  let score   = 0;
+  if (pw.length >= 6)  score++;
+  if (pw.length >= 10) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^a-zA-Z0-9]/.test(pw)) score++;
+
+  const levels = [
+    {w:'0%',  c:'#e5e7eb', t:'Enter a password'},
+    {w:'25%', c:'#ef4444', t:'Too weak'},
+    {w:'50%', c:'#f59e0b', t:'Fair'},
+    {w:'75%', c:'#3b82f6', t:'Good'},
+    {w:'90%', c:'#22c55e', t:'Strong'},
+    {w:'100%',c:'#16a34a', t:'Very strong 💪'},
+  ];
+  const lvl = levels[Math.min(score, 5)];
+  bar.style.width      = lvl.w;
+  bar.style.background = lvl.c;
+  label.textContent    = lvl.t;
+  label.style.color    = score < 2 ? '#9A8878' : lvl.c;
+}
+</script>
+
+</body>
+</html>
