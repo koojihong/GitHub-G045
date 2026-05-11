@@ -27,6 +27,26 @@ def terms():
 @app.route('/privacy.html')
 def privacy():
     return render_template('privacy.html')
+
+# ── Setup Page ───────────────────────────────────────
+@app.route('/setup', methods=['GET', 'POST'])
+def setup():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    user = User.query.get(session['user_id'])
+
+    # If already set up, skip to dashboard
+    if user.income is not None:
+        return redirect('/dashboard')
+
+    if request.method == 'POST':
+        user.income       = float(request.form.get('income'))
+        user.budget_limit = float(request.form.get('budget_limit'))
+        db.session.commit()
+        return redirect('/dashboard')
+
+    return render_template('setup.html', username=session['username'])
  
 # ── Expenses Page ─────────────────────────────────────
 @app.route('/expenses')
