@@ -6,7 +6,7 @@ app = Flask(__name__)
 # This is "database"
 transactions = []
 budget_limit = 2000
-income = 3000
+income = []
 
 # Serve the dashboard page
 @app.route("/")
