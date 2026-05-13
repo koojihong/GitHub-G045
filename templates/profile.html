@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Budget Bee — Profile</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --honey:    #D4870A;
+  --honey-dk: #9A5E04;
+  --honey-lt: #FFF0CC;
+  --amber:    #F5A623;
+  --dark:     #1A1006;
+  --dark2:    #2C1D0A;
+  --cream:    #FEFAF2;
+  --muted:    #A8937A;
+  --border:   rgba(212,135,10,0.2);
+  --red:      #C0392B;
+  --green:    #1E7E4A;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font-family: 'Outfit', sans-serif; background: var(--cream); display: flex; min-height: 100vh; }
+
+/* SIDEBAR */
+.sidebar { width: 240px; flex-shrink: 0; background: var(--dark2); display: flex; flex-direction: column; padding: 32px 16px; position: relative; overflow: hidden; }
+.sidebar::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle at 80% 80%, rgba(212,135,10,0.15) 0%, transparent 55%), radial-gradient(circle at 20% 20%, rgba(245,166,35,0.08) 0%, transparent 50%); pointer-events: none; }
+.hex-grid { position: absolute; inset: 0; opacity: 0.05; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V18L28 2l28 16v32L28 66zm0-6l22-12.7V20.7L28 8 6 20.7v26.6L28 60z' fill='%23D4870A'/%3E%3Cpath d='M28 100l-28-16V68l28 16 28-16v16z' fill='%23D4870A'/%3E%3C/svg%3E"); }
+.brand-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 40px; position: relative; z-index: 1; }
+.bee-icon { width: 38px; height: 38px; background: var(--honey); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 16px rgba(212,135,10,0.4); }
+.brand-name { font-family: 'DM Serif Display', serif; font-size: 18px; color: #fff; }
+.nav-section { position: relative; z-index: 1; flex: 1; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.55); text-decoration: none; margin-bottom: 4px; transition: all 0.2s; }
+.nav-item:hover { background: rgba(212,135,10,0.15); color: rgba(255,255,255,0.9); }
+.nav-item.active { background: var(--honey); color: #fff; }
+.nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+.nav-logout { position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px; font-size: 14px; font-weight: 500; color: rgba(255,100,100,0.7); text-decoration: none; cursor: pointer; transition: all 0.2s; }
+.nav-logout:hover { background: rgba(192,57,43,0.15); color: #e57373; }
+
+/* MAIN */
+.main { flex: 1; padding: 40px; overflow-y: auto; animation: slideUp 0.4s cubic-bezier(.16,1,.3,1) both; max-width: 800px; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.page-header { margin-bottom: 32px; }
+.page-title { font-family: 'DM Serif Display', serif; font-size: 32px; color: var(--dark); margin-bottom: 6px; letter-spacing: -0.5px; }
+.page-sub { font-size: 14px; color: var(--muted); }
+
+/* PROFILE CARD */
+.profile-card { background: #fff; border: 1.5px solid var(--border); border-radius: 16px; padding: 28px; margin-bottom: 24px; display: flex; align-items: center; gap: 24px; }
+.avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--honey-lt); border: 3px solid var(--honey); display: flex; align-items: center; justify-content: center; font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--honey); flex-shrink: 0; }
+.profile-info .name { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--dark); margin-bottom: 4px; }
+.profile-info .email { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+.member-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--honey-lt); color: var(--honey-dk); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; }
+
+/* FORM SECTIONS */
+.form-section { background: #fff; border: 1.5px solid var(--border); border-radius: 16px; padding: 28px; margin-bottom: 24px; }
+.section-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--dark); margin-bottom: 20px; }
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 12px; font-weight: 500; color: var(--dark); margin-bottom: 6px; }
+.field-wrap { position: relative; }
+.field-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--muted); pointer-events: none; }
+.field input { width: 100%; padding: 11px 12px 11px 36px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--cream); font-family: 'Outfit', sans-serif; font-size: 14px; color: var(--dark); outline: none; transition: all 0.2s; }
+.field input:focus { border-color: var(--honey); box-shadow: 0 0 0 3px rgba(212,135,10,0.1); background: #fff; }
+.field input::placeholder { color: #c5b8a8; }
+.field input:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-save { padding: 11px 24px; background: var(--honey); color: #fff; border: none; border-radius: 10px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-save:hover { background: var(--honey-dk); transform: translateY(-1px); }
+
+/* SUCCESS / ERROR ALERTS */
+.alert { padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; display: none; }
+.alert.success { background: #D4EDDA; color: #155724; border: 1px solid #c3e6cb; display: block; }
+.alert.error { background: #F8D7DA; color: #721C24; border: 1px solid #f5c6cb; display: block; }
+
+/* DANGER ZONE */
+.danger-section { background: #fff; border: 1.5px solid rgba(192,57,43,0.3); border-radius: 16px; padding: 28px; }
+.danger-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--red); margin-bottom: 8px; }
+.danger-sub { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+.btn-danger { padding: 11px 24px; background: #F8D7DA; color: var(--red); border: 1.5px solid rgba(192,57,43,0.3); border-radius: 10px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-danger:hover { background: var(--red); color: #fff; }
+
+/* PW STRENGTH */
+.pw-strength { margin-top: 6px; }
+.pw-bar-bg { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.pw-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s, background 0.3s; }
+.pw-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="hex-grid"></div>
+  <div class="brand-logo">
+    <div class="bee-icon">🐝</div>
+    <div class="brand-name">Budget Bee</div>
+  </div>
+  <div class="nav-section">
+    <a href="/dashboard" class="nav-item"><span class="nav-icon">🏠</span> Dashboard</a>
+    <a href="/expenses" class="nav-item"><span class="nav-icon">💸</span> Expenses</a>
+    <a href="/budget" class="nav-item"><span class="nav-icon">🎯</span> Budget</a>
+    <a href="/savings" class="nav-item"><span class="nav-icon">🐷</span> Savings</a>
+    <a href="/reports" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+    <a href="/profile" class="nav-item active"><span class="nav-icon">👤</span> Profile</a>
+  </div>
+  <a href="/logout" class="nav-logout"><span class="nav-icon">🚪</span> Logout</a>
+</div>
+
+<div class="main">
+  <div class="page-header">
+    <div class="page-title">My Profile</div>
+    <div class="page-sub">Manage your account information and settings</div>
+  </div>
+
+  <!-- Profile Card -->
+  <div class="profile-card">
+    <div class="avatar" id="avatar-initials">?</div>
+    <div class="profile-info">
+      <div class="name" id="display-name">—</div>
+      <div class="email" id="display-email">—</div>
+      <div class="member-badge">🐝 Budget Bee Member</div>
+    </div>
+  </div>
+
+  <!-- Edit Profile Form -->
+  <div class="form-section">
+    <div class="section-title">Edit Profile</div>
+    <form method="POST" action="/profile/update">
+      <div class="form-grid-2">
+        <div class="field">
+          <label>Full Name</label>
+          <div class="field-wrap">
+            <span class="field-icon">👤</span>
+            <input type="text" name="username" id="username-input" placeholder="Your full name" required>
+          </div>
+        </div>
+        <div class="field">
+          <label>Email Address</label>
+          <div class="field-wrap">
+            <span class="field-icon">✉️</span>
+            <input type="email" name="email" id="email-input" placeholder="your@email.com" required>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn-save">💾 Save Changes</button>
+    </form>
+  </div>
+
+  <!-- Change Password Form -->
+  <div class="form-section">
+    <div class="section-title">Change Password</div>
+    <form method="POST" action="/profile/password">
+      <div class="field">
+        <label>Current Password</label>
+        <div class="field-wrap">
+          <span class="field-icon">🔒</span>
+          <input type="password" name="current_password" placeholder="Enter current password" required>
+        </div>
+      </div>
+      <div class="form-grid-2">
+        <div class="field">
+          <label>New Password</label>
+          <div class="field-wrap">
+            <span class="field-icon">🔑</span>
+            <input type="password" name="new_password" placeholder="Min 6 characters" required minlength="6" oninput="checkStrength(this.value)">
+          </div>
+          <div class="pw-strength">
+            <div class="pw-bar-bg"><div class="pw-bar-fill" id="pw-bar" style="width:0%;background:#e5e7eb"></div></div>
+            <div class="pw-label" id="pw-label">Enter a new password</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Confirm New Password</label>
+          <div class="field-wrap">
+            <span class="field-icon">🔑</span>
+            <input type="password" name="confirm_password" placeholder="Repeat new password" required>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn-save">🔐 Update Password</button>
+    </form>
+  </div>
+
+  <!-- Danger Zone -->
+  <div class="danger-section">
+    <div class="danger-title">⚠️ Danger Zone</div>
+    <div class="danger-sub">Permanently delete your account and all your data. This action cannot be undone.</div>
+    <form method="POST" action="/profile/delete" onsubmit="return confirm('Are you sure? This will permanently delete your account and all data.');">
+      <button type="submit" class="btn-danger">🗑️ Delete My Account</button>
+    </form>
+  </div>
+</div>
+
+<script>
+// Password strength meter
+function checkStrength(pw) {
+  const bar = document.getElementById('pw-bar');
+  const label = document.getElementById('pw-label');
+  let score = 0;
+  if (pw.length >= 6)  score++;
+  if (pw.length >= 10) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^a-zA-Z0-9]/.test(pw)) score++;
+  const levels = [
+    {w:'0%',  c:'#e5e7eb', t:'Enter a password'},
+    {w:'25%', c:'#ef4444', t:'Too weak'},
+    {w:'50%', c:'#f59e0b', t:'Fair'},
+    {w:'75%', c:'#3b82f6', t:'Good'},
+    {w:'90%', c:'#22c55e', t:'Strong'},
+    {w:'100%',c:'#16a34a', t:'Very strong 💪'},
+  ];
+  const lvl = levels[Math.min(score, 5)];
+  bar.style.width = lvl.w;
+  bar.style.background = lvl.c;
+  label.textContent = lvl.t;
+  label.style.color = score < 2 ? '#9A8878' : lvl.c;
+}
+</script>
+
+</body>
+</html>

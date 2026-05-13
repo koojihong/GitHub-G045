@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Budget Bee — Expenses</title>
+<<<<<<< HEAD
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
 :root {
@@ -204,10 +205,247 @@ tr:hover td { background: rgba(212,135,10,0.03); }
 }
 .btn-edit:hover   { background: #0C5460; color: #fff; }
 .btn-delete:hover { background: var(--red); color: #fff; }
+=======
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --honey:    #C47B0E;
+  --honey-lt: #F5D48A;
+  --honey-dk: #7A4D08;
+  --comb:     #FDF3DC;
+  --dark:     #1C1410;
+  --dark2:    #2E2016;
+  --dark3:    #3D2C1E;
+  --muted:    #9A8878;
+  --light:    #FFF9EE;
+  --white:    #FFFFFF;
+  --border:   rgba(196,123,14,0.15);
+  --red:      #D64545;
+  --green:    #2D8A5A;
+  --blue:     #3572B8;
+  --purple:   #6B50C8;
+  --teal:     #1B8C8C;
+  --pink:     #C4507A;
+  --radius:   14px;
+  --shadow:   0 2px 16px rgba(100,60,0,0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--light);
+  color: var(--dark);
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── SIDEBAR ─────────────────────────────── */
+.sidebar {
+  width: 220px;
+  min-height: 100vh;
+  background: var(--dark2);
+  display: flex;
+  flex-direction: column;
+  padding: 28px 0 24px;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 24px 28px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.logo-hex {
+  width: 36px; height: 36px;
+  background: var(--honey);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.logo-text { font-family: 'DM Serif Display', serif; font-size: 18px; color: #fff; }
+.logo-sub  { font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+.nav-section { padding: 20px 16px 8px; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 24px; font-size: 13px; color: rgba(255,255,255,0.55);
+  cursor: pointer; transition: all 0.15s; border-left: 3px solid transparent;
+  text-decoration: none;
+}
+.nav-item:hover { color: #fff; background: rgba(255,255,255,0.04); }
+.nav-item.active { color: var(--honey-lt); border-left-color: var(--honey); background: rgba(196,123,14,0.08); }
+.nav-icon { width: 16px; text-align: center; font-size: 14px; }
+
+.sidebar-footer { margin-top: auto; padding: 16px 24px; }
+.user-pill {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--dark3); border-radius: 10px; padding: 10px 12px;
+}
+.avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--honey); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; }
+.user-name  { font-size: 13px; color: #fff; font-weight: 500; }
+.user-role  { font-size: 11px; color: var(--muted); }
+
+/* ── MAIN CONTENT ────────────────────────── */
+.main {
+  margin-left: 220px;
+  flex: 1;
+  padding: 32px;
+  min-height: 100vh;
+}
+
+/* ── TOPBAR ──────────────────────────────── */
+.topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 28px;
+}
+.page-title { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--dark); }
+.page-sub   { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.month-select {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px 14px; font-size: 13px; color: var(--dark);
+}
+.month-select input[type="month"] {
+  border: none; outline: none;
+  font-family: 'DM Sans', sans-serif; font-size: 13px;
+  background: transparent; color: var(--dark); cursor: pointer;
+}
+
+/* ── METRIC CARDS ────────────────────────── */
+.metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+.metric-card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+  box-shadow: var(--shadow); transition: transform 0.15s;
+  animation: fadeUp 0.5s ease both;
+}
+.metric-card:hover { transform: translateY(-2px); }
+.metric-card:nth-child(1){animation-delay:.05s}
+.metric-card:nth-child(2){animation-delay:.1s}
+.metric-card:nth-child(3){animation-delay:.15s}
+.metric-card:nth-child(4){animation-delay:.2s}
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
+.metric-icon {
+  width: 36px; height: 36px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; margin-bottom: 12px;
+}
+.metric-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.metric-value { font-size: 22px; font-weight: 600; color: var(--dark); line-height: 1; }
+.metric-value.red   { color: var(--red); }
+.metric-value.green { color: var(--green); }
+.metric-value.honey { color: var(--honey); }
+
+/* ── PANEL ───────────────────────────────── */
+.panel {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px;
+  box-shadow: var(--shadow);
+  animation: fadeUp 0.5s ease 0.25s both;
+  margin-bottom: 20px;
+}
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.panel-title  { font-size: 14px; font-weight: 600; color: var(--dark); }
+.panel-tag    { font-size: 11px; background: var(--comb); color: var(--honey-dk); padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+
+/* ── ADD FORM ────────────────────────────── */
+.form-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  gap: 12px; align-items: end;
+}
+.form-group label {
+  display: block; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); margin-bottom: 6px;
+}
+.form-group input,
+.form-group select {
+  width: 100%; padding: 9px 12px;
+  border: 1px solid var(--border); border-radius: 10px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px;
+  color: var(--dark); background: var(--white); outline: none;
+  transition: border-color 0.2s;
+}
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--honey);
+  box-shadow: 0 0 0 3px rgba(196,123,14,0.1);
+}
+.btn-add {
+  padding: 9px 20px;
+  background: var(--honey); color: #fff;
+  border: none; border-radius: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  transition: all 0.2s;
+}
+.btn-add:hover { background: var(--honey-dk); }
+
+/* ── TABLE ───────────────────────────────── */
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  text-align: left; padding: 10px 14px;
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--muted);
+  background: var(--comb); border-bottom: 1px solid var(--border);
+}
+tbody td {
+  padding: 12px 14px; font-size: 13px;
+  border-bottom: 1px solid rgba(196,123,14,0.07);
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: #fffaf0; }
+
+/* ── CATEGORY BADGE ──────────────────────── */
+.badge {
+  display: inline-block; padding: 3px 10px;
+  border-radius: 20px; font-size: 11px; font-weight: 600;
+}
+.cat-Food      { background: #fef9c3; color: #854d0e; }
+.cat-Transport { background: #dbeafe; color: #1e40af; }
+.cat-Shopping  { background: #fce7f3; color: #9d174d; }
+.cat-Bills     { background: #f3e8ff; color: #6b21a8; }
+.cat-Health    { background: #dcfce7; color: #166534; }
+.cat-Other     { background: #f1f5f9; color: #475569; }
+
+/* ── DELETE BUTTON ───────────────────────── */
+.btn-del {
+  background: none; border: none; cursor: pointer;
+  color: var(--border); font-size: 15px; padding: 4px 6px;
+  border-radius: 6px; transition: all 0.15s;
+}
+.btn-del:hover { color: var(--red); background: #fff0f0; }
+
+/* ── EMPTY STATE ─────────────────────────── */
+.empty {
+  text-align: center; padding: 48px 20px; color: var(--muted); font-size: 13px;
+}
+.empty div { font-size: 36px; margin-bottom: 10px; }
+
+/* ── ALERT BANNER ────────────────────────── */
+.alert-banner {
+  display: none; align-items: center; gap: 10px;
+  padding: 12px 18px; border-radius: var(--radius); margin-bottom: 20px;
+  font-size: 13px; font-weight: 500;
+}
+.alert-banner.ok   { display:flex; background:#EDFDF5; color:#0A5232; border:1px solid #A3E8C4; }
+.alert-banner.warn { display:flex; background:#FFF4E0; color:#7A4D08; border:1px solid #F5D48A; }
+
+/* ── RESPONSIVE ──────────────────────────── */
+@media (max-width: 900px) {
+  .metrics { grid-template-columns: repeat(2,1fr); }
+  .form-grid { grid-template-columns: 1fr 1fr; }
+}
+>>>>>>> e9ef47eb166c13a53f2c7feec12df5e9325069fd
 </style>
 </head>
 <body>
 
+<<<<<<< HEAD
 <div class="sidebar">
   <div class="hex-grid"></div>
   <div class="brand-logo">
@@ -286,10 +524,127 @@ tr:hover td { background: rgba(212,135,10,0.03); }
         <button class="filter-btn">Shopping</button>
         <button class="filter-btn">Bills</button>
       </div>
+=======
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-hex">🐝</div>
+    <div>
+      <div class="logo-text">Budget Bee</div>
+      <div class="logo-sub">Finance Tracker</div>
+    </div>
+  </div>
+
+  <div class="nav-section">Main</div>
+  <a href="dashboard.html" class="nav-item"><span class="nav-icon">◈</span> Dashboard</a>
+  <a href="expenses.html"  class="nav-item active"><span class="nav-icon">↕</span> Expenses</a>
+  <a href="#"          class="nav-item"><span class="nav-icon">◎</span> Budget</a>
+  <a href="#"          class="nav-item"><span class="nav-icon">◇</span> Savings</a>
+
+  <div class="nav-section">Account</div>
+  <a href="#"      class="nav-item"><span class="nav-icon">⊙</span> Profile</a>
+  <a href="#"      class="nav-item"><span class="nav-icon">⊘</span> Settings</a>
+
+  <div class="sidebar-footer">
+    <div class="user-pill">
+      <div class="avatar" id="sb-avatar">?</div>
+      <div>
+        <div class="user-name" id="sb-name">{{ username }}</div>
+        <div class="user-role">Member</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div>
+      <div class="page-title">Expenses</div>
+      <div class="page-sub">Track and manage your monthly spending</div>
+    </div>
+    <div class="month-select">
+      📅&nbsp;
+      <input type="month" id="month-picker"/>
+    </div>
+  </div>
+
+  <!-- ALERT -->
+  <div id="alert-banner" class="alert-banner"></div>
+
+  <!-- METRIC CARDS -->
+  <div class="metrics">
+    <div class="metric-card">
+      <div class="metric-icon" style="background:#FDF3DC">💸</div>
+      <div class="metric-label">Total Spent</div>
+      <div class="metric-value red" id="m-spent">RM 0.00</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="background:#EDFDF5">🔢</div>
+      <div class="metric-label">Transactions</div>
+      <div class="metric-value" id="m-count">0</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="background:#FDF3DC">📈</div>
+      <div class="metric-label">Biggest Expense</div>
+      <div class="metric-value honey" id="m-biggest">RM 0.00</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="background:#EDFDF5">📊</div>
+      <div class="metric-label">Daily Average</div>
+      <div class="metric-value green" id="m-avg">RM 0.00</div>
+    </div>
+  </div>
+
+  <!-- ADD EXPENSE PANEL -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">+ Add New Expense</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="desc" placeholder="e.g. Lunch at mamak"/>
+      </div>
+      <div class="form-group">
+        <label>Amount (RM)</label>
+        <input type="number" id="amount" placeholder="0.00" min="0" step="0.01"/>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="category">
+          <option value="Food">🍜 Food</option>
+          <option value="Transport">🚗 Transport</option>
+          <option value="Shopping">🛍️ Shopping</option>
+          <option value="Bills">💡 Bills</option>
+          <option value="Health">💊 Health</option>
+          <option value="Other">📦 Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="date"/>
+      </div>
+      <div class="form-group">
+        <label>&nbsp;</label>
+        <button class="btn-add" onclick="addExpense()">+ Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPENSES TABLE PANEL -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Transactions</div>
+      <span class="panel-tag" id="table-tag">0 records</span>
+>>>>>>> e9ef47eb166c13a53f2c7feec12df5e9325069fd
     </div>
     <table>
       <thead>
         <tr>
+<<<<<<< HEAD
           <th>Description</th>
           <th>Category</th>
           <th>Date</th>
@@ -320,3 +675,142 @@ tr:hover td { background: rgba(212,135,10,0.03); }
 
 </body>
 </html>
+=======
+          <th>Date</th>
+          <th>Description</th>
+          <th>Category</th>
+          <th>Amount</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="expense-list">
+        <tr><td colspan="5">
+          <div class="empty"><div>🐝</div>No expenses yet this month</div>
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ── Setup defaults ──────────────────────────────────
+const picker = document.getElementById('month-picker');
+const today  = new Date();
+picker.value = today.toISOString().slice(0, 7);
+document.getElementById('date').value = today.toISOString().slice(0, 10);
+picker.addEventListener('change', loadExpenses);
+
+// ── Set sidebar avatar from username ────────────────
+const uname = document.getElementById('sb-name').textContent.trim();
+if (uname && uname !== '{{ username }}') {
+  document.getElementById('sb-avatar').textContent = uname.charAt(0).toUpperCase();
+}
+
+// ── Category badge class map ─────────────────────────
+const catClass = {
+  Food: 'cat-Food', Transport: 'cat-Transport',
+  Shopping: 'cat-Shopping', Bills: 'cat-Bills',
+  Health: 'cat-Health', Other: 'cat-Other'
+};
+
+// ── Category icon map ────────────────────────────────
+const catIcon = {
+  Food: '🍜', Transport: '🚗', Shopping: '🛍️',
+  Bills: '💡', Health: '💊', Other: '📦'
+};
+
+// ── Load expenses ────────────────────────────────────
+async function loadExpenses() {
+  const [year, month] = picker.value.split('-');
+  const res  = await fetch(`/api/expenses?month=${month}&year=${year}`);
+  const data = await res.json();
+
+  const tbody = document.getElementById('expense-list');
+
+  if (data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5">
+      <div class="empty"><div>🐝</div>No expenses yet this month</div>
+    </td></tr>`;
+    updateSummary([]);
+    return;
+  }
+
+  tbody.innerHTML = data.map(e => `
+    <tr>
+      <td style="color:var(--muted)">${e.date}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:16px">${catIcon[e.category] || '📦'}</span>
+          <span style="font-weight:500">${e.description}</span>
+        </div>
+      </td>
+      <td><span class="badge ${catClass[e.category] || 'cat-Other'}">${e.category}</span></td>
+      <td style="font-weight:600;color:var(--red)">RM ${e.amount.toFixed(2)}</td>
+      <td><button class="btn-del" onclick="deleteExpense(${e.id})" title="Delete">🗑</button></td>
+    </tr>
+  `).join('');
+
+  updateSummary(data);
+}
+
+// ── Update summary cards ─────────────────────────────
+function updateSummary(data) {
+  const total   = data.reduce((s, e) => s + e.amount, 0);
+  const biggest = data.length ? Math.max(...data.map(e => e.amount)) : 0;
+  const avg     = data.length ? total / new Date(today.getFullYear(), today.getMonth()+1, 0).getDate() : 0;
+
+  document.getElementById('m-spent').textContent   = `RM ${total.toFixed(2)}`;
+  document.getElementById('m-count').textContent   = data.length;
+  document.getElementById('m-biggest').textContent = `RM ${biggest.toFixed(2)}`;
+  document.getElementById('m-avg').textContent     = `RM ${avg.toFixed(2)}`;
+  document.getElementById('table-tag').textContent = `${data.length} record${data.length !== 1 ? 's' : ''}`;
+}
+
+// ── Add expense ──────────────────────────────────────
+async function addExpense() {
+  const desc   = document.getElementById('desc').value.trim();
+  const amount = document.getElementById('amount').value;
+  const cat    = document.getElementById('category').value;
+  const date   = document.getElementById('date').value;
+
+  if (!desc || !amount || !date) {
+    showAlert('Please fill in all fields!', 'warn');
+    return;
+  }
+
+  const res = await fetch('/api/expenses/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ description: desc, amount, category: cat, date })
+  });
+
+  if (res.ok) {
+    document.getElementById('desc').value   = '';
+    document.getElementById('amount').value = '';
+    showAlert('Expense added successfully!', 'ok');
+    loadExpenses();
+  }
+}
+
+// ── Delete expense ───────────────────────────────────
+async function deleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
+  await fetch(`/api/expenses/delete/${id}`, { method: 'DELETE' });
+  loadExpenses();
+}
+
+// ── Alert banner ─────────────────────────────────────
+function showAlert(msg, type) {
+  const banner = document.getElementById('alert-banner');
+  banner.textContent = type === 'ok' ? '✓ ' + msg : '⚠ ' + msg;
+  banner.className = 'alert-banner ' + type;
+  setTimeout(() => banner.className = 'alert-banner', 3000);
+}
+
+// ── Init ─────────────────────────────────────────────
+loadExpenses();
+</script>
+</body>
+</html>
+>>>>>>> e9ef47eb166c13a53f2c7feec12df5e9325069fd

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Budget Bee — Setup Your Budget</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --honey:    #C47B0E;
+  --honey-lt: #F5D48A;
+  --honey-dk: #7A4D08;
+  --comb:     #FDF3DC;
+  --dark:     #1C1410;
+  --dark2:    #2E2016;
+  --dark3:    #3D2C1E;
+  --muted:    #9A8878;
+  --light:    #FFF9EE;
+  --white:    #FFFFFF;
+  --border:   rgba(196,123,14,0.2);
+  --red:      #D64545;
+  --green:    #2D8A5A;
+  --radius:   14px;
+  --shadow:   0 2px 16px rgba(100,60,0,0.08);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--light);
+  color: var(--dark);
+  display: flex;
+  align-items: stretch;
+  min-height: 100vh;
+}
+
+/* ── LEFT PANEL ─────────────────────────── */
+.left-panel {
+  width: 420px;
+  flex-shrink: 0;
+  background: var(--dark2);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px;
+  overflow: hidden;
+}
+.left-panel::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(circle at 80% 80%, rgba(196,123,14,0.18) 0%, transparent 55%),
+    radial-gradient(circle at 20% 20%, rgba(245,166,35,0.08) 0%, transparent 50%);
+}
+.hex-grid {
+  position: absolute; inset: 0; opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V18L28 2l28 16v32L28 66zm0-6l22-12.7V20.7L28 8 6 20.7v26.6L28 60z' fill='%23C47B0E'/%3E%3Cpath d='M28 100l-28-16V68l28 16 28-16v16z' fill='%23C47B0E'/%3E%3C/svg%3E");
+}
+
+.brand { position: relative; z-index: 1; }
+.brand-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 48px; }
+.logo-hex {
+  width: 42px; height: 42px; background: var(--honey);
+  border-radius: 12px; display: flex; align-items: center;
+  justify-content: center; font-size: 20px;
+  box-shadow: 0 4px 20px rgba(196,123,14,0.4);
+}
+.brand-name { font-family: 'DM Serif Display', serif; font-size: 20px; color: #fff; }
+
+.brand-headline {
+  font-family: 'DM Serif Display', serif;
+  font-size: 34px; line-height: 1.2; color: #fff;
+  margin-bottom: 16px; letter-spacing: -0.5px;
+}
+.brand-headline em { color: var(--honey-lt); font-style: italic; }
+.brand-body { font-size: 14px; color: rgba(255,255,255,0.5); line-height: 1.75; margin-bottom: 40px; }
+
+/* Progress steps */
+.steps { position: relative; z-index: 1; }
+.step { display: flex; gap: 14px; margin-bottom: 20px; align-items: flex-start; }
+.step-num {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600;
+}
+.step-num.done   { background: var(--honey); color: #fff; }
+.step-num.active { background: rgba(196,123,14,0.25); border: 1.5px solid var(--honey); color: var(--honey-lt); }
+.step-num.next   { background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.3); }
+.step-text { font-size: 13px; line-height: 1.6; padding-top: 4px; }
+.step-text.done   { color: rgba(255,255,255,0.5); }
+.step-text.active { color: #fff; font-weight: 500; }
+.step-text.next   { color: rgba(255,255,255,0.25); }
+
+/* ── RIGHT PANEL ─────────────────────────── */
+.right-panel {
+  flex: 1; display: flex; align-items: center;
+  justify-content: center; padding: 48px;
+  background: var(--light); position: relative; overflow-y: auto;
+}
+.right-panel::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 70% 40%, rgba(196,123,14,0.05) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.form-card {
+  width: 100%; max-width: 440px;
+  position: relative; z-index: 1;
+  animation: slideUp 0.5s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes slideUp {
+  from { opacity:0; transform:translateY(24px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* Welcome header */
+.welcome-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--comb); color: var(--honey-dk);
+  border: 1px solid var(--border); border-radius: 20px;
+  padding: 5px 14px; font-size: 12px; font-weight: 600;
+  margin-bottom: 20px;
+}
+.form-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 30px; color: var(--dark);
+  margin-bottom: 8px; letter-spacing: -0.5px;
+}
+.form-sub { font-size: 14px; color: var(--muted); margin-bottom: 32px; }
+
+/* ── INPUT CARDS ─────────────────────────── */
+.input-card {
+  background: var(--white); border: 1.5px solid var(--border);
+  border-radius: var(--radius); padding: 22px;
+  margin-bottom: 16px; box-shadow: var(--shadow);
+  transition: border-color 0.2s;
+}
+.input-card:focus-within {
+  border-color: var(--honey);
+  box-shadow: 0 0 0 3px rgba(196,123,14,0.08);
+}
+.input-card-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+}
+.input-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: var(--comb); display: flex; align-items: center;
+  justify-content: center; font-size: 18px; flex-shrink: 0;
+}
+.input-label { font-size: 14px; font-weight: 600; color: var(--dark); }
+.input-desc  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.input-wrap { position: relative; }
+.input-prefix {
+  position: absolute; left: 14px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px; font-weight: 600; color: var(--muted);
+}
+.input-wrap input {
+  width: 100%; padding: 12px 14px 12px 38px;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  font-family: 'DM Sans', sans-serif; font-size: 16px;
+  font-weight: 600; color: var(--dark); background: var(--light);
+  outline: none; transition: all 0.2s;
+}
+.input-wrap input:focus {
+  border-color: var(--honey);
+  background: var(--white);
+}
+.input-wrap input::placeholder { color: #c5b5a0; font-weight: 400; }
+
+/* Quick pick buttons */
+.quick-picks { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.quick-btn {
+  padding: 5px 12px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--comb);
+  font-family: 'DM Sans', sans-serif; font-size: 12px;
+  color: var(--honey-dk); cursor: pointer; transition: all 0.15s;
+}
+.quick-btn:hover { background: var(--honey); color: #fff; border-color: var(--honey); }
+
+/* ── SUMMARY BOX ─────────────────────────── */
+.summary-box {
+  background: var(--comb); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 20px;
+  margin-bottom: 20px; display: none;
+}
+.summary-box.show { display: block; }
+.summary-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 12px; }
+.summary-row-item { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+.summary-row-item:last-child { margin-bottom: 0; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px; font-weight: 600; }
+.summary-label { color: var(--muted); }
+.summary-value { color: var(--dark); font-weight: 500; }
+.summary-value.green { color: var(--green); }
+.summary-value.red   { color: var(--red); }
+
+/* ── BUTTON ──────────────────────────────── */
+.btn-submit {
+  width: 100%; padding: 14px;
+  background: var(--honey); color: #fff;
+  border: none; border-radius: var(--radius);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+  position: relative; overflow: hidden;
+}
+.btn-submit::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+}
+.btn-submit:hover { background: var(--honey-dk); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(196,123,14,0.35); }
+.btn-submit:disabled { background: #d4b896; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.form-note { text-align: center; font-size: 12px; color: var(--muted); margin-top: 14px; }
+</style>
+</head>
+<body>
+
+<!-- LEFT PANEL -->
+<div class="left-panel">
+  <div class="hex-grid"></div>
+  <div class="brand">
+    <div class="brand-logo">
+      <div class="logo-hex">🐝</div>
+      <div class="brand-name">Budget Bee</div>
+    </div>
+    <div class="brand-headline">
+      Almost there,<br><em>{{ username }}!</em>
+    </div>
+    <p class="brand-body">
+      Just set your monthly income and budget limit
+      and you're ready to start tracking.
+    </p>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num done">✓</div>
+      <div class="step-text done">Create your account</div>
+    </div>
+    <div class="step">
+      <div class="step-num active">2</div>
+      <div class="step-text active">Set your income & budget ← You are here</div>
+    </div>
+    <div class="step">
+      <div class="step-num next">3</div>
+      <div class="step-text next">Go to your dashboard</div>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="right-panel">
+  <div class="form-card">
+
+    <div class="welcome-badge">🎉 Account created!</div>
+    <div class="form-title">Set up your budget</div>
+    <div class="form-sub">Tell us your monthly income and how much you want to spend</div>
+
+    <form method="POST" action="/setup">
+
+      <!-- INCOME CARD -->
+      <div class="input-card">
+        <div class="input-card-header">
+          <div class="input-icon">💵</div>
+          <div>
+            <div class="input-label">Monthly Income</div>
+            <div class="input-desc">Your total take-home pay each month</div>
+          </div>
+        </div>
+        <div class="input-wrap">
+          <span class="input-prefix">RM</span>
+          <input type="number" id="income" name="income"
+                 placeholder="0.00" min="0" step="0.01" required
+                 oninput="updateSummary()"/>
+        </div>
+        <div class="quick-picks">
+          <span class="quick-btn" onclick="setVal('income', 1500)">RM 1,500</span>
+          <span class="quick-btn" onclick="setVal('income', 2000)">RM 2,000</span>
+          <span class="quick-btn" onclick="setVal('income', 3000)">RM 3,000</span>
+          <span class="quick-btn" onclick="setVal('income', 5000)">RM 5,000</span>
+        </div>
+      </div>
+
+      <!-- BUDGET CARD -->
+      <div class="input-card">
+        <div class="input-card-header">
+          <div class="input-icon">🎯</div>
+          <div>
+            <div class="input-label">Monthly Budget Limit</div>
+            <div class="input-desc">The maximum you want to spend each month</div>
+          </div>
+        </div>
+        <div class="input-wrap">
+          <span class="input-prefix">RM</span>
+          <input type="number" id="budget_limit" name="budget_limit"
+                 placeholder="0.00" min="0" step="0.01" required
+                 oninput="updateSummary()"/>
+        </div>
+        <div class="quick-picks">
+          <span class="quick-btn" onclick="setVal('budget_limit', 800)">RM 800</span>
+          <span class="quick-btn" onclick="setVal('budget_limit', 1000)">RM 1,000</span>
+          <span class="quick-btn" onclick="setVal('budget_limit', 1500)">RM 1,500</span>
+          <span class="quick-btn" onclick="setVal('budget_limit', 2000)">RM 2,000</span>
+        </div>
+      </div>
+
+      <!-- LIVE SUMMARY -->
+      <div class="summary-box" id="summary-box">
+        <div class="summary-title">Your Budget Summary</div>
+        <div class="summary-row-item">
+          <span class="summary-label">Monthly Income</span>
+          <span class="summary-value" id="s-income">—</span>
+        </div>
+        <div class="summary-row-item">
+          <span class="summary-label">Budget Limit</span>
+          <span class="summary-value" id="s-limit">—</span>
+        </div>
+        <div class="summary-row-item">
+          <span class="summary-label">Savings Target</span>
+          <span class="summary-value green" id="s-savings">—</span>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit" id="submit-btn" disabled>
+        Save & Go to Dashboard →
+      </button>
+    </form>
+
+    <div class="form-note">You can update these anytime from your dashboard settings</div>
+
+  </div>
+</div>
+
+<script>
+function setVal(id, val) {
+  document.getElementById(id).value = val;
+  updateSummary();
+}
+
+function updateSummary() {
+  const income = parseFloat(document.getElementById('income').value) || 0;
+  const limit  = parseFloat(document.getElementById('budget_limit').value) || 0;
+  const btn    = document.getElementById('submit-btn');
+  const box    = document.getElementById('summary-box');
+
+  if (income > 0 && limit > 0) {
+    const savings = income - limit;
+    document.getElementById('s-income').textContent  = `RM ${income.toFixed(2)}`;
+    document.getElementById('s-limit').textContent   = `RM ${limit.toFixed(2)}`;
+    document.getElementById('s-savings').textContent = `RM ${savings.toFixed(2)}`;
+    document.getElementById('s-savings').className   = 'summary-value ' + (savings >= 0 ? 'green' : 'red');
+    box.classList.add('show');
+    btn.disabled = false;
+  } else {
+    box.classList.remove('show');
+    btn.disabled = true;
+  }
+}
+</script>
+</body>
+</html>
