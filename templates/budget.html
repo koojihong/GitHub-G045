@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Budget Bee — Budget</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --honey:    #D4870A;
+  --honey-dk: #9A5E04;
+  --honey-lt: #FFF0CC;
+  --amber:    #F5A623;
+  --dark:     #1A1006;
+  --dark2:    #2C1D0A;
+  --cream:    #FEFAF2;
+  --muted:    #A8937A;
+  --border:   rgba(212,135,10,0.2);
+  --red:      #C0392B;
+  --green:    #1E7E4A;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--cream);
+  display: flex; min-height: 100vh;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 240px; flex-shrink: 0;
+  background: var(--dark2);
+  display: flex; flex-direction: column;
+  padding: 32px 16px;
+  position: relative; overflow: hidden;
+}
+.sidebar::before {
+  content: ''; position: absolute; inset: 0;
+  background-image:
+    radial-gradient(circle at 80% 80%, rgba(212,135,10,0.15) 0%, transparent 55%),
+    radial-gradient(circle at 20% 20%, rgba(245,166,35,0.08) 0%, transparent 50%);
+  pointer-events: none;
+}
+.hex-grid {
+  position: absolute; inset: 0; opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V18L28 2l28 16v32L28 66zm0-6l22-12.7V20.7L28 8 6 20.7v26.6L28 60z' fill='%23D4870A'/%3E%3Cpath d='M28 100l-28-16V68l28 16 28-16v16z' fill='%23D4870A'/%3E%3C/svg%3E");
+}
+.brand-logo {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 40px; position: relative; z-index: 1;
+}
+.bee-icon {
+  width: 38px; height: 38px; background: var(--honey);
+  border-radius: 10px; display: flex; align-items: center;
+  justify-content: center; font-size: 18px;
+  box-shadow: 0 4px 16px rgba(212,135,10,0.4);
+}
+.brand-name { font-family: 'DM Serif Display', serif; font-size: 18px; color: #fff; }
+.nav-section { position: relative; z-index: 1; flex: 1; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: 10px;
+  font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.55);
+  text-decoration: none; margin-bottom: 4px; transition: all 0.2s;
+}
+.nav-item:hover { background: rgba(212,135,10,0.15); color: rgba(255,255,255,0.9); }
+.nav-item.active { background: var(--honey); color: #fff; }
+.nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+.nav-logout {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: 10px;
+  font-size: 14px; font-weight: 500; color: rgba(255,100,100,0.7);
+  text-decoration: none; cursor: pointer; transition: all 0.2s;
+}
+.nav-logout:hover { background: rgba(192,57,43,0.15); color: #e57373; }
+
+/* MAIN */
+.main {
+  flex: 1; padding: 40px; overflow-y: auto;
+  animation: slideUp 0.4s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-header { margin-bottom: 32px; }
+.page-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 32px; color: var(--dark);
+  margin-bottom: 6px; letter-spacing: -0.5px;
+}
+.page-sub { font-size: 14px; color: var(--muted); }
+
+/* SUMMARY CARDS */
+.summary-row {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 16px; margin-bottom: 28px;
+}
+.summary-card {
+  background: #fff; border: 1.5px solid var(--border);
+  border-radius: 16px; padding: 20px 22px;
+}
+.sc-label {
+  font-size: 12px; font-weight: 500; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+}
+.sc-value {
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px; color: var(--muted);
+}
+.sc-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* PROGRESS SECTION */
+.progress-section {
+  background: #fff; border: 1.5px solid var(--border);
+  border-radius: 16px; padding: 28px; margin-bottom: 28px;
+}
+.section-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px; color: var(--dark); margin-bottom: 20px;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center; padding: 40px 20px;
+}
+.empty-icon { font-size: 48px; margin-bottom: 16px; }
+.empty-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px; color: var(--dark); margin-bottom: 8px;
+}
+.empty-sub { font-size: 14px; color: var(--muted); }
+
+/* SET BUDGET FORM */
+.form-section {
+  background: #fff; border: 1.5px solid var(--border);
+  border-radius: 16px; padding: 28px; margin-bottom: 28px;
+}
+.form-grid-2 {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 16px; margin-bottom: 20px;
+}
+.field label {
+  display: block; font-size: 12px; font-weight: 500;
+  color: var(--dark); margin-bottom: 6px;
+}
+.field-wrap { position: relative; }
+.field-icon {
+  position: absolute; left: 12px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px; color: var(--muted); pointer-events: none;
+}
+.field input, .field select {
+  width: 100%; padding: 11px 12px 11px 36px;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  background: var(--cream); font-family: 'Outfit', sans-serif;
+  font-size: 14px; color: var(--dark); outline: none;
+  transition: all 0.2s; appearance: none;
+}
+.field input:focus, .field select:focus {
+  border-color: var(--honey);
+  box-shadow: 0 0 0 3px rgba(212,135,10,0.1); background: #fff;
+}
+.field input::placeholder { color: #c5b8a8; }
+.btn-save {
+  padding: 12px 28px; background: var(--honey); color: #fff;
+  border: none; border-radius: 10px; font-family: 'Outfit', sans-serif;
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.btn-save:hover { background: var(--honey-dk); transform: translateY(-1px); }
+
+/* HISTORY TABLE */
+.table-section {
+  background: #fff; border: 1.5px solid var(--border);
+  border-radius: 16px; overflow: hidden;
+}
+.table-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 24px; border-bottom: 1px solid var(--border);
+}
+.table-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--dark); }
+table { width: 100%; border-collapse: collapse; }
+thead { background: var(--cream); }
+th {
+  padding: 12px 20px; text-align: left; font-size: 12px;
+  font-weight: 600; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.5px; border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 14px 20px; font-size: 14px; color: var(--dark);
+  border-bottom: 1px solid rgba(212,135,10,0.08);
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(212,135,10,0.03); }
+.status-badge {
+  padding: 4px 12px; border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+}
+.status-badge.over { background: #F8D7DA; color: #721C24; }
+.status-badge.safe { background: #D4EDDA; color: #155724; }
+.status-badge.warn { background: #FFF3CD; color: #856404; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="hex-grid"></div>
+  <div class="brand-logo">
+    <div class="bee-icon">🐝</div>
+    <div class="brand-name">Budget Bee</div>
+  </div>
+  <div class="nav-section">
+    <a href="/dashboard" class="nav-item"><span class="nav-icon">🏠</span> Dashboard</a>
+    <a href="/expenses" class="nav-item"><span class="nav-icon">💸</span> Expenses</a>
+    <a href="/budget" class="nav-item active"><span class="nav-icon">🎯</span> Budget</a>
+    <a href="/savings" class="nav-item"><span class="nav-icon">🐷</span> Savings</a>
+    <a href="/reports" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+    <a href="/profile" class="nav-item"><span class="nav-icon">👤</span> Profile</a>
+  </div>
+  <a href="/logout" class="nav-logout"><span class="nav-icon">🚪</span> Logout</a>
+</div>
+
+<div class="main">
+  <div class="page-header">
+    <div class="page-title">My Budget</div>
+    <div class="page-sub">Set limits and track your monthly spending</div>
+  </div>
+
+  <!-- Summary Cards — empty until Ji Hong connects DB -->
+  <div class="summary-row">
+    <div class="summary-card">
+      <div class="sc-label">Monthly Budget</div>
+      <div class="sc-value">— RM</div>
+      <div class="sc-sub">Not set yet</div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-label">Total Spent</div>
+      <div class="sc-value">— RM</div>
+      <div class="sc-sub">No data yet</div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-label">Remaining</div>
+      <div class="sc-value">— RM</div>
+      <div class="sc-sub">No data yet</div>
+    </div>
+  </div>
+
+  <!-- Progress — empty state -->
+  <div class="progress-section">
+    <div class="section-title">Budget Progress</div>
+    <div class="empty-state">
+      <div class="empty-icon">🎯</div>
+      <div class="empty-title">No budget set yet</div>
+      <div class="empty-sub">Set your monthly budget below to start tracking</div>
+    </div>
+  </div>
+
+  <!-- Set Budget Form -->
+  <div class="form-section">
+    <div class="section-title">Set Monthly Budget</div>
+    <form method="POST" action="/budget">
+      <div class="form-grid-2">
+        <div class="field">
+          <label>Monthly Budget (RM)</label>
+          <div class="field-wrap">
+            <span class="field-icon">💰</span>
+            <input type="number" name="budget" placeholder="e.g. 1000" step="0.01" required>
+          </div>
+        </div>
+        <div class="field">
+          <label>Month</label>
+          <div class="field-wrap">
+            <span class="field-icon">📅</span>
+            <input type="month" name="month" required>
+          </div>
+        </div>
+        <div class="field">
+          <label>Alert me when I reach (%)</label>
+          <div class="field-wrap">
+            <span class="field-icon">⚠️</span>
+            <select name="alert_pct">
+              <option value="50">50% — Halfway</option>
+              <option value="70" selected>70% — Getting close</option>
+              <option value="80">80% — Almost there</option>
+              <option value="90">90% — Last warning</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Category (optional)</label>
+          <div class="field-wrap">
+            <span class="field-icon">🏷️</span>
+            <select name="category">
+              <option value="" selected>All categories</option>
+              <option value="food">🍔 Food</option>
+              <option value="transport">🚗 Transport</option>
+              <option value="shopping">🛍️ Shopping</option>
+              <option value="bills">💡 Bills</option>
+              <option value="others">📦 Others</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn-save">💾 Save Budget</button>
+    </form>
+  </div>
+
+  <!-- Budget History — empty until Ji Hong connects DB -->
+  <div class="table-section">
+    <div class="table-header">
+      <div class="table-title">Budget History</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Budget Set</th>
+          <th>Total Spent</th>
+          <th>Remaining</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Ji Hong will populate this with real database data -->
+      </tbody>
+    </table>
+    <div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <div class="empty-title">No budget history yet</div>
+      <div class="empty-sub">Your past budgets will appear here</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -14,5 +14,9 @@ def register():
 def home_page():
     return render_template("dashboard.html")
 
+@app.route("/login.html")
+def login():
+    return render_template("login.html")
+
 if __name__ == "__main__":
     app.run(debug=True)
