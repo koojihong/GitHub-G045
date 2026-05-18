@@ -88,7 +88,9 @@ body {
 /* ── MAIN CONTENT ────────────────────────── */
 .main {
   margin-left: 220px;
-  flex: 1;
+  flex: 1 1 auto;
+  width: calc(100% - 220px);
+  min-width: 0;
   padding: 32px;
   min-height: 100vh;
 }
@@ -143,6 +145,7 @@ body {
   box-shadow: var(--shadow);
   animation: fadeUp 0.5s ease 0.25s both;
   margin-bottom: 20px;
+  overflow-x: auto;
 }
 .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
 .panel-title  { font-size: 14px; font-weight: 600; color: var(--dark); }
@@ -184,7 +187,7 @@ body {
 .btn-add:hover { background: var(--honey-dk); }
 
 /* ── TABLE ───────────────────────────────── */
-table { width: 100%; border-collapse: collapse; }
+table { width: 100%; min-width: 100%; border-collapse: collapse; }
 thead th {
   text-align: left; padding: 10px 14px;
   font-size: 11px; font-weight: 600; text-transform: uppercase;
@@ -496,8 +499,5 @@ function showAlert(msg, type) {
 loadExpenses();
 </script>
 
-
-    </div>
-    <table>
-      <thead>
-        <tr>
+</body>
+</html>
