@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, render_template, redirect, url_fo
 from flask_bcrypt import Bcrypt
 from database import db, User
 
-auth = Blueprint('auth', __name__)
+auth = Blueprint('auth', __name__, url_prefix='')
 bcrypt = Bcrypt()
 
 # ── Register ──────────────────────────────────────────
