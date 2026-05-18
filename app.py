@@ -1,5 +1,5 @@
 from flask import Flask, redirect, url_for, render_template, request, session, jsonify
-from database import db, User, Expense
+from database import db, User, Expense, Income
 from auth import auth, bcrypt
 from datetime import datetime
  
@@ -145,6 +145,76 @@ def get_data():
         'limit':        user.budget_limit,
     })
  
+# ── Income Page ───────────────────────────────────────
+@app.route('/income')
+def income_page():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    return render_template('income.html', username=session['username'])
+ 
+# ── Get Income (filter by month) ──────────────────────
+@app.route('/api/income')
+def get_income():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+ 
+    month = request.args.get('month')
+    year  = request.args.get('year')
+ 
+    query = Income.query.filter_by(user_id=session['user_id'])
+ 
+    if month and year:
+        query = query.filter(
+            db.extract('month', Income.date) == int(month),
+            db.extract('year',  Income.date) == int(year)
+        )
+ 
+    incomes = query.order_by(Income.date.desc()).all()
+ 
+    return jsonify([{
+        'id':          i.id,
+        'description': i.description,
+        'amount':      i.amount,
+        'income_type': i.income_type,
+        'date':        i.date.strftime('%Y-%m-%d')
+    } for i in incomes])
+ 
+# ── Add Income ────────────────────────────────────────
+@app.route('/api/income/add', methods=['POST'])
+def add_income():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+ 
+    data = request.get_json()
+ 
+    if not data or not data.get('description') or not data.get('amount') or not data.get('date'):
+        return jsonify({'error': 'Missing fields'}), 400
+ 
+    new_income = Income(
+        user_id     = session['user_id'],
+        description = data['description'],
+        amount      = float(data['amount']),
+        income_type = data['income_type'],
+        date        = datetime.strptime(data['date'], '%Y-%m-%d')
+    )
+    db.session.add(new_income)
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+ 
+# ── Delete Income ─────────────────────────────────────
+@app.route('/api/income/delete/<int:income_id>', methods=['DELETE'])
+def delete_income(income_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+ 
+    income = Income.query.filter_by(id=income_id, user_id=session['user_id']).first()
+    if not income:
+        return jsonify({'error': 'Not found'}), 404
+ 
+    db.session.delete(income)
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
 # ── Create DB & Run ────────────────────────────────────
 with app.app_context():
     db.create_all()
