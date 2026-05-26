@@ -270,7 +270,10 @@ body {
 
 
 
-    <form method="POST" action="/register">
+    {% if error %}
+      <div style="background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:18px">⚠ {{ error }}</div>
+      {% endif %}
+      <form method="POST" action="/register">
       <div class="field">
         <label for="username">Full name</label>
         <div class="field-wrap">
@@ -314,7 +317,7 @@ body {
 
       <label class="terms">
         <input type="checkbox" required/>
-        I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+        I agree to the <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a>
       </label>
 
       <button type="submit" class="btn-submit">Create Account →</button>
@@ -327,7 +330,7 @@ body {
     </div>
 
     <div class="form-footer">
-      <a href="login.html">← Back to sign in</a>
+      <a href="/login">← Back to sign in</a>
     </div>
   </div>
 </div>
