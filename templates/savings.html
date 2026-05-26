@@ -4,188 +4,341 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Budget Bee — Savings</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
 :root {
-  --honey:    #D4870A;
-  --honey-dk: #9A5E04;
-  --honey-lt: #FFF0CC;
-  --amber:    #F5A623;
-  --dark:     #1A1006;
-  --dark2:    #2C1D0A;
-  --cream:    #FEFAF2;
-  --muted:    #A8937A;
-  --border:   rgba(212,135,10,0.2);
-  --red:      #C0392B;
-  --green:    #1E7E4A;
+  --honey:    #C47B0E;
+  --honey-lt: #F5D48A;
+  --honey-dk: #7A4D08;
+  --comb:     #FDF3DC;
+  --dark:     #1C1410;
+  --dark2:    #2E2016;
+  --dark3:    #3D2C1E;
+  --muted:    #9A8878;
+  --light:    #FFF9EE;
+  --white:    #FFFFFF;
+  --border:   rgba(196,123,14,0.15);
+  --red:      #D64545;
+  --green:    #2D8A5A;
+  --blue:     #3572B8;
+  --purple:   #6B50C8;
+  --teal:     #1B8C8C;
+  --pink:     #C4507A;
+  --radius:   14px;
+  --shadow:   0 2px 16px rgba(100,60,0,0.08);
 }
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
-body { font-family: 'Outfit', sans-serif; background: var(--cream); display: flex; min-height: 100vh; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--light);
+  color: var(--dark);
+  display: flex;
+  min-height: 100vh;
+}
 
-/* SIDEBAR */
-.sidebar { width: 240px; flex-shrink: 0; background: var(--dark2); display: flex; flex-direction: column; padding: 32px 16px; position: relative; overflow: hidden; }
-.sidebar::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle at 80% 80%, rgba(212,135,10,0.15) 0%, transparent 55%), radial-gradient(circle at 20% 20%, rgba(245,166,35,0.08) 0%, transparent 50%); pointer-events: none; }
-.hex-grid { position: absolute; inset: 0; opacity: 0.05; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V18L28 2l28 16v32L28 66zm0-6l22-12.7V20.7L28 8 6 20.7v26.6L28 60z' fill='%23D4870A'/%3E%3Cpath d='M28 100l-28-16V68l28 16 28-16v16z' fill='%23D4870A'/%3E%3C/svg%3E"); }
-.brand-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 40px; position: relative; z-index: 1; }
-.bee-icon { width: 38px; height: 38px; background: var(--honey); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 16px rgba(212,135,10,0.4); }
-.brand-name { font-family: 'DM Serif Display', serif; font-size: 18px; color: #fff; }
-.nav-section { position: relative; z-index: 1; flex: 1; }
-.nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.55); text-decoration: none; margin-bottom: 4px; transition: all 0.2s; }
-.nav-item:hover { background: rgba(212,135,10,0.15); color: rgba(255,255,255,0.9); }
-.nav-item.active { background: var(--honey); color: #fff; }
-.nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
-.nav-logout { position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px; font-size: 14px; font-weight: 500; color: rgba(255,100,100,0.7); text-decoration: none; cursor: pointer; transition: all 0.2s; }
-.nav-logout:hover { background: rgba(192,57,43,0.15); color: #e57373; }
+/* ── SIDEBAR ─────────────────────────────── */
+.sidebar {
+  width: 220px;
+  min-height: 100vh;
+  background: var(--dark2);
+  display: flex;
+  flex-direction: column;
+  padding: 28px 0 24px;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 24px 28px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.logo-hex {
+  width: 36px; height: 36px;
+  background: var(--honey);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.logo-text { font-family: 'DM Serif Display', serif; font-size: 18px; color: #fff; }
+.logo-sub  { font-size: 10px; color: var(--muted); margin-top: 1px; }
 
-/* MAIN */
-.main { flex: 1; padding: 40px; overflow-y: auto; animation: slideUp 0.4s cubic-bezier(.16,1,.3,1) both; }
-@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-.page-header { margin-bottom: 32px; }
-.page-title { font-family: 'DM Serif Display', serif; font-size: 32px; color: var(--dark); margin-bottom: 6px; letter-spacing: -0.5px; }
-.page-sub { font-size: 14px; color: var(--muted); }
+.nav-section { padding: 20px 16px 8px; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 24px; font-size: 13px; color: rgba(255,255,255,0.55);
+  cursor: pointer; transition: all 0.15s; border-left: 3px solid transparent;
+  text-decoration: none;
+}
+.nav-item:hover { color: #fff; background: rgba(255,255,255,0.04); }
+.nav-item.active { color: var(--honey-lt); border-left-color: var(--honey); background: rgba(196,123,14,0.08); }
+.nav-icon { width: 16px; text-align: center; font-size: 14px; }
 
-/* SUMMARY CARDS */
-.summary-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
-.summary-card { background: #fff; border: 1.5px solid var(--border); border-radius: 16px; padding: 20px 22px; }
-.sc-label { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-.sc-value { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--muted); }
-.sc-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
-.sc-value.green { color: var(--green); }
-.sc-value.honey { color: var(--honey); }
+.sidebar-footer { margin-top: auto; padding: 16px 24px; }
+.user-pill {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--dark3); border-radius: 10px; padding: 10px 12px;
+}
+.avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--honey); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; }
+.user-name  { font-size: 13px; color: #fff; font-weight: 500; }
+.user-role  { font-size: 11px; color: var(--muted); }
 
-/* ADD GOAL FORM */
-.form-section { background: #fff; border: 1.5px solid var(--border); border-radius: 16px; padding: 24px 28px; margin-bottom: 28px; }
-.section-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--dark); margin-bottom: 20px; }
-.form-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 14px; align-items: end; }
-.field label { display: block; font-size: 12px; font-weight: 500; color: var(--dark); margin-bottom: 6px; }
-.field-wrap { position: relative; }
-.field-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--muted); pointer-events: none; }
-.field input { width: 100%; padding: 11px 12px 11px 36px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--cream); font-family: 'Outfit', sans-serif; font-size: 14px; color: var(--dark); outline: none; transition: all 0.2s; }
-.field input:focus { border-color: var(--honey); box-shadow: 0 0 0 3px rgba(212,135,10,0.1); background: #fff; }
-.field input::placeholder { color: #c5b8a8; }
-.btn-add { padding: 11px 20px; background: var(--honey); color: #fff; border: none; border-radius: 10px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-.btn-add:hover { background: var(--honey-dk); transform: translateY(-1px); }
+/* ── MAIN CONTENT ────────────────────────── */
+.main {
+  margin-left: 220px;
+  flex: 1 1 auto;
+  width: calc(100% - 220px);
+  min-width: 0;
+  padding: 32px;
+  min-height: 100vh;
+}
 
-/* GOALS GRID */
-.goals-section { background: #fff; border: 1.5px solid var(--border); border-radius: 16px; overflow: hidden; }
-.goals-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border); }
-.goals-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--dark); }
-.goals-grid { padding: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+/* ── TOPBAR ──────────────────────────────── */
+.topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 28px;
+}
+.page-title { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--dark); }
+.page-sub   { font-size: 13px; color: var(--muted); margin-top: 2px; }
 
-/* GOAL CARD */
-.goal-card { background: var(--cream); border: 1.5px solid var(--border); border-radius: 14px; padding: 20px; }
+/* ── METRIC CARDS ────────────────────────── */
+.metrics { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 24px; }
+.metric-card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+  box-shadow: var(--shadow); transition: transform 0.15s;
+  animation: fadeUp 0.5s ease both;
+}
+.metric-card:hover { transform: translateY(-2px); }
+.metric-card:nth-child(1){animation-delay:.05s}
+.metric-card:nth-child(2){animation-delay:.1s}
+.metric-card:nth-child(3){animation-delay:.15s}
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
+.metric-icon {
+  width: 36px; height: 36px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; margin-bottom: 12px;
+}
+.metric-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.metric-value { font-size: 22px; font-weight: 600; color: var(--dark); line-height: 1; }
+.metric-value.green { color: var(--green); }
+.metric-value.honey { color: var(--honey); }
+
+/* ── PANEL ───────────────────────────────── */
+.panel {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px;
+  box-shadow: var(--shadow);
+  animation: fadeUp 0.5s ease 0.25s both;
+  margin-bottom: 20px;
+}
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.panel-title  { font-size: 14px; font-weight: 600; color: var(--dark); }
+.panel-tag    { font-size: 11px; background: var(--comb); color: var(--honey-dk); padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+
+/* ── ADD GOAL FORM ───────────────────────── */
+.form-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 12px; align-items: end;
+}
+.form-group label {
+  display: block; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); margin-bottom: 6px;
+}
+.form-group input {
+  width: 100%; padding: 9px 12px;
+  border: 1px solid var(--border); border-radius: 10px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px;
+  color: var(--dark); background: var(--white); outline: none;
+  transition: border-color 0.2s;
+}
+.form-group input:focus {
+  border-color: var(--honey);
+  box-shadow: 0 0 0 3px rgba(196,123,14,0.1);
+}
+.btn-add {
+  padding: 9px 20px;
+  background: var(--honey); color: #fff;
+  border: none; border-radius: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  transition: all 0.2s;
+}
+.btn-add:hover { background: var(--honey-dk); }
+
+/* ── GOALS GRID ──────────────────────────── */
+.goals-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; }
+
+/* ── GOAL CARD ───────────────────────────── */
+.goal-card {
+  background: var(--light); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px;
+}
 .goal-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
-.goal-name { font-size: 15px; font-weight: 600; color: var(--dark); }
-.goal-pct { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--green); }
-.goal-track { background: #fff; border-radius: 20px; height: 10px; overflow: hidden; margin-bottom: 12px; border: 1px solid var(--border); }
-.goal-fill { height: 100%; border-radius: 20px; background: linear-gradient(90deg, var(--green), #27ae60); transition: width 0.6s ease; }
+.goal-name { font-size: 14px; font-weight: 600; color: var(--dark); }
+.goal-pct  { font-size: 18px; font-weight: 600; color: var(--green); }
+.goal-track {
+  background: var(--white); border-radius: 20px;
+  height: 8px; overflow: hidden; margin-bottom: 10px;
+  border: 1px solid var(--border);
+}
+.goal-fill {
+  height: 100%; border-radius: 20px;
+  background: linear-gradient(90deg, var(--green), #3aaf72);
+  transition: width 0.6s ease;
+}
 .goal-amounts { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 14px; }
 .goal-amounts span { font-weight: 600; color: var(--dark); }
 .goal-actions { display: flex; gap: 8px; }
-.btn-deposit { flex: 1; padding: 7px; background: var(--honey); color: #fff; border: none; border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-deposit {
+  flex: 1; padding: 7px;
+  background: var(--honey); color: #fff;
+  border: none; border-radius: 8px;
+  font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
 .btn-deposit:hover { background: var(--honey-dk); }
-.btn-del { padding: 7px 12px; background: #F8D7DA; color: #721C24; border: none; border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-del {
+  padding: 7px 12px;
+  background: #FDF0F0; color: var(--red);
+  border: none; border-radius: 8px;
+  font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
 .btn-del:hover { background: var(--red); color: #fff; }
 
-/* EMPTY STATE */
-.empty-state { text-align: center; padding: 60px 20px; }
-.empty-icon { font-size: 48px; margin-bottom: 16px; }
-.empty-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--dark); margin-bottom: 8px; }
-.empty-sub { font-size: 14px; color: var(--muted); }
+/* ── EMPTY STATE ─────────────────────────── */
+.empty {
+  text-align: center; padding: 48px 20px; color: var(--muted); font-size: 13px;
+}
+.empty div { font-size: 36px; margin-bottom: 10px; }
+
+/* ── RESPONSIVE ──────────────────────────── */
+@media (max-width: 900px) {
+  .metrics { grid-template-columns: repeat(2,1fr); }
+  .form-grid { grid-template-columns: 1fr 1fr; }
+  .goals-grid { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
 
-<div class="sidebar">
-  <div class="hex-grid"></div>
-  <div class="brand-logo">
-    <div class="bee-icon">🐝</div>
-    <div class="brand-name">Budget Bee</div>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-hex">🐝</div>
+    <div>
+      <div class="logo-text">Budget Bee</div>
+      <div class="logo-sub">Finance Tracker</div>
+    </div>
   </div>
-  <div class="nav-section">
-    <a href="/dashboard" class="nav-item"><span class="nav-icon">🏠</span> Dashboard</a>
-    <a href="/expenses" class="nav-item"><span class="nav-icon">💸</span> Expenses</a>
-    <a href="/budget" class="nav-item"><span class="nav-icon">🎯</span> Budget</a>
-    <a href="/savings" class="nav-item active"><span class="nav-icon">🐷</span> Savings</a>
-    <a href="/reports" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
-    <a href="/profile" class="nav-item"><span class="nav-icon">👤</span> Profile</a>
-  </div>
-  <a href="/logout" class="nav-logout"><span class="nav-icon">🚪</span> Logout</a>
-</div>
 
+  <div class="nav-section">Main</div>
+  <a href="dashboard.html" class="nav-item"><span class="nav-icon">◈</span> Dashboard</a>
+  <a href="expenses.html"  class="nav-item"><span class="nav-icon">↕</span> Expenses</a>
+  <a href="income.html"    class="nav-item"><span class="nav-icon">◎</span> Income</a>
+  <a href="savings.html"   class="nav-item active"><span class="nav-icon">◇</span> Savings</a>
+
+  <div class="nav-section">Account</div>
+  <a href="profile.html"   class="nav-item"><span class="nav-icon">⊙</span> Profile</a>
+  <a href="#"              class="nav-item"><span class="nav-icon">⊘</span> Settings</a>
+
+  <div class="sidebar-footer">
+    <div class="user-pill">
+      <div class="avatar" id="sb-avatar">?</div>
+      <div>
+        <div class="user-name" id="sb-name">{{ username }}</div>
+        <div class="user-role">Member</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
 <div class="main">
-  <div class="page-header">
-    <div class="page-title">Savings Goals</div>
-    <div class="page-sub">Set targets and track your progress towards financial goals</div>
-  </div>
 
-  <!-- Summary Cards -->
-  <div class="summary-row">
-    <div class="summary-card">
-      <div class="sc-label">Total Goals</div>
-      <div class="sc-value honey">—</div>
-      <div class="sc-sub">Active goals</div>
-    </div>
-    <div class="summary-card">
-      <div class="sc-label">Total Saved</div>
-      <div class="sc-value green">— RM</div>
-      <div class="sc-sub">Across all goals</div>
-    </div>
-    <div class="summary-card">
-      <div class="sc-label">Goals Completed</div>
-      <div class="sc-value green">—</div>
-      <div class="sc-sub">Reached 100%</div>
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div>
+      <div class="page-title">Savings Goals</div>
+      <div class="page-sub">Set targets and track your progress towards financial goals</div>
     </div>
   </div>
 
-  <!-- Add Goal Form -->
-  <div class="form-section">
-    <div class="section-title">Add New Savings Goal</div>
+  <!-- METRIC CARDS -->
+  <div class="metrics">
+    <div class="metric-card">
+      <div class="metric-icon" style="background:#FDF3DC">🎯</div>
+      <div class="metric-label">Total Goals</div>
+      <div class="metric-value honey" id="m-goals">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="background:#EDFDF5">💰</div>
+      <div class="metric-label">Total Saved</div>
+      <div class="metric-value green" id="m-saved">— RM</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="background:#EDFDF5">🏆</div>
+      <div class="metric-label">Goals Completed</div>
+      <div class="metric-value green" id="m-done">—</div>
+    </div>
+  </div>
+
+  <!-- ADD GOAL PANEL -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">+ Add New Savings Goal</div>
+    </div>
     <form method="POST" action="/savings">
       <div class="form-grid">
-        <div class="field">
+        <div class="form-group">
           <label>Goal Name</label>
-          <div class="field-wrap">
-            <span class="field-icon">🎯</span>
-            <input type="text" name="goal_name" placeholder="e.g. New Laptop, Emergency Fund" required>
-          </div>
+          <input type="text" name="goal_name" placeholder="e.g. New Laptop, Emergency Fund" required>
         </div>
-        <div class="field">
+        <div class="form-group">
           <label>Target Amount (RM)</label>
-          <div class="field-wrap">
-            <span class="field-icon">💰</span>
-            <input type="number" name="target" placeholder="0.00" step="0.01" required>
-          </div>
+          <input type="number" name="target" placeholder="0.00" step="0.01" required>
         </div>
-        <div class="field">
+        <div class="form-group">
           <label>Target Date</label>
-          <div class="field-wrap">
-            <span class="field-icon">📅</span>
-            <input type="date" name="target_date">
-          </div>
+          <input type="date" name="target_date">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button type="submit" class="btn-add">+ Add Goal</button>
         </div>
       </div>
-      <br>
-      <button type="submit" class="btn-add">+ Add Goal</button>
     </form>
   </div>
 
-  <!-- Goals Grid -->
-  <div class="goals-section">
-    <div class="goals-header">
-      <div class="goals-title">My Goals</div>
+  <!-- GOALS PANEL -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">My Goals</div>
+      <span class="panel-tag" id="goals-tag">0 goals</span>
     </div>
     <div id="goals-container">
       <!-- Ji Hong will populate this with real database data -->
-      <div class="empty-state">
-        <div class="empty-icon">🐷</div>
-        <div class="empty-title">No savings goals yet</div>
-        <div class="empty-sub">Add your first goal using the form above</div>
+      <div class="empty">
+        <div>🐷</div>
+        No savings goals yet — add your first goal above
       </div>
     </div>
   </div>
-</div>
+
+</div><!-- /main -->
+
+<script>
+const uname = document.getElementById('sb-name').textContent.trim();
+if (uname && uname !== '{{ username }}') {
+  document.getElementById('sb-avatar').textContent = uname.charAt(0).toUpperCase();
+}
+</script>
 
 </body>
 </html>
