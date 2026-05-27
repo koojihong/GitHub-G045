@@ -8,8 +8,8 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email    = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
-    income = db.Column(db.Float, nullable=False)
-    budget_limit = db.Column(db.Float, nullable=False)
+    income = db.Column(db.Float, nullable=True)
+    budget_limit = db.Column(db.Float, nullable=True)
     
     def __repr__(self):
         return f'<User {self.username}>'
@@ -35,4 +35,16 @@ class Income(db.Model):
  
     def __repr__(self):
         return f'<Income {self.description}>'
+    
+class SavingsGoal(db.Model):
+    id           = db.Column(db.Integer, primary_key=True)
+    user_id      = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name         = db.Column(db.String(100), nullable=False)
+    target_amount= db.Column(db.Float, nullable=False)
+    saved_amount = db.Column(db.Float, default=0.0)
+    deadline     = db.Column(db.String(20), nullable=True)
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<SavingsGoal {self.name}>'
 

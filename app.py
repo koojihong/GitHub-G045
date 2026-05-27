@@ -1,5 +1,5 @@
 from flask import Flask, redirect, url_for, render_template, request, session, jsonify
-from database import db, User, Expense, Income
+from database import db, User, Expense, Income, SavingsGoal
 from auth import auth, bcrypt
 from datetime import datetime
  
@@ -20,11 +20,11 @@ app.register_blueprint(auth)
 def home():
     return redirect(url_for('auth.login'))
  
-@app.route('/terms.html')
+@app.route('/terms')
 def terms():
     return render_template('terms.html')
  
-@app.route('/privacy.html')
+@app.route('/privacy')
 def privacy():
     return render_template('privacy.html')
 
@@ -212,6 +212,107 @@ def delete_income(income_id):
         return jsonify({'error': 'Not found'}), 404
  
     db.session.delete(income)
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
+# ── Profile Page ──────────────────────────────────────
+@app.route('/profile')
+def profile_page():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    user = User.query.get(session['user_id'])
+    return render_template('profile.html', username=user.username, email=user.email)
+
+# ── Forgot Password Page ──────────────────────────────
+@app.route('/forgot-password')
+def forgot_password():
+    return render_template('forgot_password.html')
+
+# ── Reset Password Page ───────────────────────────────
+@app.route('/reset-password/<token>')
+def reset_password(token):
+    return render_template('reset_password.html', token=token)
+
+# ── Savings Page ──────────────────────────────────────
+@app.route('/savings')
+def savings_page():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    return render_template('savings.html', username=session['username'])
+
+# ── Get All Savings Goals ─────────────────────────────
+@app.route('/api/savings')
+def get_savings():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    goals = SavingsGoal.query.filter_by(user_id=session['user_id']).all()
+
+    return jsonify([{
+        'id':            g.id,
+        'name':          g.name,
+        'target_amount': g.target_amount,
+        'saved_amount':  g.saved_amount,
+        'deadline':      g.deadline,
+        'created_at':    g.created_at.strftime('%Y-%m-%d')
+    } for g in goals])
+
+# ── Add New Savings Goal ──────────────────────────────
+@app.route('/api/savings/add', methods=['POST'])
+def add_savings():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+
+    if not data or not data.get('name') or not data.get('target_amount'):
+        return jsonify({'error': 'Missing fields'}), 400
+
+    new_goal = SavingsGoal(
+        user_id       = session['user_id'],
+        name          = data['name'],
+        target_amount = float(data['target_amount']),
+        saved_amount  = float(data.get('saved_amount', 0)),
+        deadline      = data.get('deadline', None)
+    )
+    db.session.add(new_goal)
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
+# ── Add Money to a Goal ────────────────────────────────
+@app.route('/api/savings/topup/<int:goal_id>', methods=['POST'])
+def topup_savings(goal_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    goal = SavingsGoal.query.filter_by(id=goal_id, user_id=session['user_id']).first()
+    if not goal:
+        return jsonify({'error': 'Not found'}), 404
+
+    data = request.get_json()
+    amount = float(data.get('amount', 0))
+
+    # Don't exceed target
+    goal.saved_amount = min(goal.saved_amount + amount, goal.target_amount)
+    db.session.commit()
+
+    return jsonify({
+        'status':       'ok',
+        'saved_amount': goal.saved_amount,
+        'completed':    goal.saved_amount >= goal.target_amount
+    })
+
+# ── Delete Savings Goal ────────────────────────────────
+@app.route('/api/savings/delete/<int:goal_id>', methods=['DELETE'])
+def delete_savings(goal_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    goal = SavingsGoal.query.filter_by(id=goal_id, user_id=session['user_id']).first()
+    if not goal:
+        return jsonify({'error': 'Not found'}), 404
+
+    db.session.delete(goal)
     db.session.commit()
     return jsonify({'status': 'ok'})
 

@@ -342,8 +342,10 @@ body {
       <div class="form-sub">Sign in to your Budget Bee account</div>
     </div>
 
+{% if error %}
+<div class="alert error">⚠ {{ error }}</div>
+{% endif %}
     
-
     <form method="POST" action="/login">
       <div class="field">
         <div class="field-wrap">
@@ -365,7 +367,7 @@ body {
         <label class="remember">
           <input type="checkbox" name="remember"/> Remember me
         </label>
-        <a href="#" class="forgot">Forgot password?</a>
+        <a href="/forgot-password" class="forgot">Forgot password?</a>
       </div>
 
       <button type="submit" class="btn-submit">Sign In →</button>

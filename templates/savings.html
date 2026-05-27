@@ -239,14 +239,14 @@ body {
   </div>
 
   <div class="nav-section">Main</div>
-  <a href="dashboard.html" class="nav-item"><span class="nav-icon">◈</span> Dashboard</a>
-  <a href="expenses.html"  class="nav-item"><span class="nav-icon">↕</span> Expenses</a>
-  <a href="income.html"    class="nav-item"><span class="nav-icon">◎</span> Income</a>
-  <a href="savings.html"   class="nav-item active"><span class="nav-icon">◇</span> Savings</a>
+  <a href="/dashboard" class="nav-item"><span class="nav-icon">◈</span> Dashboard</a>
+  <a href="/expenses"  class="nav-item"><span class="nav-icon">↕</span> Expenses</a>
+  <a href="/income"    class="nav-item"><span class="nav-icon">◎</span> Income</a>
+  <a href="/savings"   class="nav-item active"><span class="nav-icon">◇</span> Savings</a>
 
   <div class="nav-section">Account</div>
-  <a href="profile.html"   class="nav-item"><span class="nav-icon">⊙</span> Profile</a>
-  <a href="#"              class="nav-item"><span class="nav-icon">⊘</span> Settings</a>
+  <a href="/profile"   class="nav-item"><span class="nav-icon">⊙</span> Profile</a>
+  <a href="/settings"  class="nav-item"><span class="nav-icon">⊘</span> Settings</a>
 
   <div class="sidebar-footer">
     <div class="user-pill">
@@ -294,7 +294,7 @@ body {
     <div class="panel-header">
       <div class="panel-title">+ Add New Savings Goal</div>
     </div>
-    <form method="POST" action="/savings">
+    <form onsubmit="addGoal(event)">
       <div class="form-grid">
         <div class="form-group">
           <label>Goal Name</label>
@@ -334,10 +334,127 @@ body {
 </div><!-- /main -->
 
 <script>
+// ── Sidebar avatar ────────────────────────────────────
 const uname = document.getElementById('sb-name').textContent.trim();
-if (uname && uname !== '{{ username }}') {
+if (uname && !uname.includes('{')) {
   document.getElementById('sb-avatar').textContent = uname.charAt(0).toUpperCase();
 }
+
+// ── Load all goals on page open ───────────────────────
+async function loadGoals() {
+  const res   = await fetch('/api/savings');
+  const goals = await res.json();
+
+  if (goals.error) {
+    showAlert('Session expired. Please login again.');
+    return;
+  }
+
+  const container = document.getElementById('goals-container');
+  const tag       = document.getElementById('goals-tag');
+
+  // Update metric cards
+  const totalSaved = goals.reduce((s, g) => s + g.saved_amount, 0);
+  const completed  = goals.filter(g => g.saved_amount >= g.target_amount).length;
+  document.getElementById('m-goals').textContent = goals.length;
+  document.getElementById('m-saved').textContent = `RM ${totalSaved.toFixed(2)}`;
+  document.getElementById('m-done').textContent  = completed;
+  tag.textContent = `${goals.length} goal${goals.length !== 1 ? 's' : ''}`;
+
+  if (goals.length === 0) {
+    container.innerHTML = `<div class="empty"><div>🐷</div>No savings goals yet — add your first goal above</div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="goals-grid">${goals.map(g => {
+    const pct      = g.target_amount > 0 ? Math.min((g.saved_amount / g.target_amount) * 100, 100) : 0;
+    const done     = g.saved_amount >= g.target_amount;
+    const color    = done ? '#2D8A5A' : pct >= 75 ? '#C47B0E' : '#3572B8';
+    const deadline = g.deadline ? ` · Due ${g.deadline}` : '';
+    return `
+    <div class="goal-card">
+      <div class="goal-card-top">
+        <div>
+          <div class="goal-name">${done ? '🏆 ' : ''}${g.name}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">${deadline}</div>
+        </div>
+        <div class="goal-pct" style="color:${color}">${pct.toFixed(0)}%</div>
+      </div>
+      <div class="goal-track">
+        <div class="goal-fill" style="width:${pct}%;background:linear-gradient(90deg,${color},${color}cc)"></div>
+      </div>
+      <div class="goal-amounts">
+        <div>Saved <span>RM ${g.saved_amount.toFixed(2)}</span></div>
+        <div>Target <span>RM ${g.target_amount.toFixed(2)}</span></div>
+      </div>
+      <div class="goal-actions">
+        ${done
+          ? `<div style="flex:1;text-align:center;font-size:12px;font-weight:600;color:var(--green);padding:7px">✓ Goal Completed!</div>`
+          : `<button class="btn-deposit" onclick="depositGoal(${g.id}, ${g.target_amount - g.saved_amount})">+ Add Money</button>`
+        }
+        <button class="btn-del" onclick="deleteGoal(${g.id})">Delete</button>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ── Add new goal ──────────────────────────────────────
+async function addGoal(e) {
+  e.preventDefault();  // stop page from reloading
+
+  const name          = document.querySelector('[name="goal_name"]').value.trim();
+  const target_amount = document.querySelector('[name="target"]').value;
+  const deadline      = document.querySelector('[name="target_date"]').value;
+
+  if (!name || !target_amount) {
+    alert('Please fill in goal name and target amount!');
+    return;
+  }
+
+  const res = await fetch('/api/savings/add', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ name, target_amount: parseFloat(target_amount), deadline })
+  });
+
+  if (res.ok) {
+    // Clear fields
+    document.querySelector('[name="goal_name"]').value  = '';
+    document.querySelector('[name="target"]').value     = '';
+    document.querySelector('[name="target_date"]').value = '';
+    loadGoals();
+  } else {
+    alert('Failed to add goal. Are you logged in?');
+  }
+}
+
+// ── Add money to a goal ───────────────────────────────
+async function depositGoal(id, remaining) {
+  const amount = prompt(`How much do you want to add? (Max: RM ${remaining.toFixed(2)})`);
+  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return;
+
+  const res = await fetch(`/api/savings/topup/${id}`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ amount: parseFloat(amount) })
+  });
+
+  const data = await res.json();
+  if (res.ok) {
+    if (data.completed) alert('🏆 Congratulations! Goal completed!');
+    loadGoals();
+  }
+}
+
+// ── Delete a goal ─────────────────────────────────────
+async function deleteGoal(id) {
+  if (!confirm('Delete this savings goal?')) return;
+  await fetch(`/api/savings/delete/${id}`, { method: 'DELETE' });
+  loadGoals();
+}
+
+// ── Init ──────────────────────────────────────────────
+loadGoals();
 </script>
 
 </body>
