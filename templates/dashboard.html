@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Budget Bee — Dashboard</title>
-
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <script>
 // Load data from Python when page opens
 function loadData() {
@@ -44,6 +44,23 @@ function loadData() {
             document.getElementById("tx-list").innerHTML = 
                 txHTML || "<p style='color:var(--muted);font-size:13px'>No transactions yet</p>";
         });
+}
+
+// Add a new transaction
+function addTransaction() {
+    const desc = document.getElementById("tx-desc").value;
+    const amount = document.getElementById("tx-amount").value;
+    const category = document.getElementById("tx-category").value;
+
+    fetch("/api/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ desc, amount, category })
+    })
+    .then(res => res.json())
+    .then(() => {
+        loadData();  // refresh the dashboard
+    });
 }
 
 // Load data when page first opens
@@ -133,7 +150,7 @@ body {
 .main {
   margin-left: 220px;
   flex: 1;
-  padding: 16px;
+  padding: 32px;
   min-height: 100vh;
 }
 
@@ -200,7 +217,7 @@ body {
 /* ── PANEL ───────────────────────────────── */
 .panel {
   background: var(--white); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 14px;
+  border-radius: var(--radius); padding: 22px;
   box-shadow: var(--shadow);
   animation: fadeUp 0.5s ease 0.25s both;
 }
@@ -286,21 +303,21 @@ body {
   </div>
 
   <div class="nav-section">Main</div>
-  <a href="/dashboard" class="nav-item active"><span class="nav-icon">◈</span> Dashboard</a>
-  <a href="/expenses"  class="nav-item"><span class="nav-icon">↕</span> Expenses</a>
-  <a href="/income"   class="nav-item"><span class="nav-icon">◎</span> Income</a>
-  <a href="/savings"  class="nav-item"><span class="nav-icon">◇</span> Savings</a>
+  <a href="/dashboard" class="nav-item active" style="text-decoration:none"><span class="nav-icon">◈</span> Dashboard</a>
+  <a href="/expenses"  class="nav-item" style="text-decoration:none"><span class="nav-icon">↕</span> Expenses</a>
+  <a href="/income"    class="nav-item" style="text-decoration:none"><span class="nav-icon">◎</span> Income</a>
+  <a href="/savings"   class="nav-item" style="text-decoration:none"><span class="nav-icon">◇</span> Savings</a>
 
   <div class="nav-section">Account</div>
-  <a href="/profile"   class="nav-item"><span class="nav-icon">⊙</span> Profile</a>
-  <a href="/logout"    class="nav-item"><span class="nav-icon">⊘</span> Logout</a>
+  <a href="/profile"   class="nav-item" style="text-decoration:none"><span class="nav-icon">⊙</span> Profile</a>
 
   <div class="sidebar-footer">
+    <a href="/logout" style="display:block;text-align:center;padding:9px;margin-bottom:10px;border-radius:9px;border:1px solid rgba(212,135,10,0.3);font-size:13px;color:rgba(255,255,255,0.5);text-decoration:none;transition:all .2s" onmouseover="this.style.background='rgba(212,135,10,0.1)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.5)'">Sign out</a>
     <div class="user-pill">
-      <div class="avatar">CK</div>
+      <div class="avatar" id="sb-avatar">{{ username[0].upper() }}</div>
       <div>
-        <div class="user-name" id="sb-name">{{ username }}</div>
-        <div class="user-role">Member</div>
+        <div class="user-name">{{ username }}</div>
+        <div class="user-email">{{ email }}</div>
       </div>
     </div>
   </div>
@@ -313,20 +330,20 @@ body {
   <div class="topbar">
     <div>
       <div class="page-title">Dashboard</div>
-      <div class="page-sub">Here's your financial overview for the selected month</div>
+      <div class="page-sub">Welcome back, <strong>{{ username }}</strong> — here's your financial overview</div>
     </div>
     <div class="month-select">
       📅&nbsp;
-<select id="month-picker" onchange="changeMonth(this.value)">
-  <option value="2026-05" selected>May 2026</option>
-  <option value="2026-06">June 2026</option>
-  <option value="2026-07">July 2026</option>
-  <option value="2026-08">August 2026</option>
-  <option value="2026-09">September 2026</option>
-  <option value="2026-10">October 2026</option>
-  <option value="2026-11">November 2026</option>
-  <option value="2026-12">December 2026</option>
-</select>
+      <select id="month-picker" onchange="changeMonth(this.value)">
+        <option value="2026-01" selected>May 2026</option>
+        <option value="2026-02">June 2026</option>
+        <option value="2026-03">July 2026</option>
+        <option value="2026-04">August 2026</option>
+        <option value="2026-05">September 2026</option>
+        <option value="2026-06">October 2026</option>
+        <option value="2026-07">November 2026</option>
+        <option value="2026-08">December 2026</option>
+      </select>
     </div>
   </div>
 
@@ -341,7 +358,7 @@ body {
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title">Monthly Spending Trend</div>
-        <span class="panel-tag">Apr 2025</span>
+        <span class="panel-tag">May 2026</span>
       </div>
       <div class="chart-wrap-tall"><canvas id="trendChart"></canvas></div>
     </div>

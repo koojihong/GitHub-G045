@@ -320,15 +320,15 @@ tbody tr:hover { background: #fffaf0; }
   <a href="/savings"   class="nav-item"><span class="nav-icon">◇</span> Savings</a>
 
   <div class="nav-section">Account</div>
-  <a href="#"       class="nav-item"><span class="nav-icon">⊙</span> Profile</a>
-  <a href="/logout" class="nav-item"><span class="nav-icon">⊘</span> Logout</a>
+  <a href="/profile"   class="nav-item"><span class="nav-icon">⊙</span> Profile</a>
 
   <div class="sidebar-footer">
+        <a href="/logout" style="display:block;text-align:center;padding:9px;margin-bottom:10px;border-radius:9px;border:1px solid rgba(212,135,10,0.3);font-size:13px;color:rgba(255,255,255,0.5);text-decoration:none;transition:all .2s" onmouseover="this.style.background='rgba(212,135,10,0.1)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.5)'">Sign out</a>
     <div class="user-pill">
-      <div class="avatar" id="sb-avatar">?</div>
+      <div class="avatar" id="sb-avatar">{{ username[0].upper() }}</div>
       <div>
         <div class="user-name" id="sb-name">{{ username }}</div>
-        <div class="user-role">Member</div>
+        <div class="user-role">{{ email }}</div>
       </div>
     </div>
   </div>
