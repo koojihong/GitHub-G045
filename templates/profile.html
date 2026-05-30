@@ -226,10 +226,10 @@ body {
   <div class="sidebar-footer">
         <a href="/logout" style="display:block;text-align:center;padding:9px;margin-bottom:10px;border-radius:9px;border:1px solid rgba(212,135,10,0.3);font-size:13px;color:rgba(255,255,255,0.5);text-decoration:none;transition:all .2s" onmouseover="this.style.background='rgba(212,135,10,0.1)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.5)'">Sign out</a>
     <div class="user-pill">
-      <div class="avatar" id="sb-avatar">J</div>
+      <div class="avatar" id="sb-avatar">{{ username[0].upper() }}</div>
       <div>
-        <div class="user-name" id="sb-name">username</div>
-        <div class="user-role">john.doe@email.com</div>
+        <div class="user-name" id="sb-name">{{ username }}</div>
+        <div class="user-role">{{ email }}</div>
       </div>
     </div>
   </div>
@@ -248,10 +248,10 @@ body {
 
   <!-- PROFILE BANNER -->
   <div class="profile-banner">
-    <div class="profile-avatar" id="avatar-initials">J</div>
+    <div class="profile-avatar" id="avatar-initials">{{ username[0].upper() }}</div>
     <div class="profile-info">
-      <div class="p-name" id="display-name">username</div>
-      <div class="p-email" id="display-email">username@gmail.com</div>
+      <div class="p-name" id="display-name">{{ username }}</div>
+      <div class="p-email" id="display-email">{{ email }}</div>
       <div class="member-badge">🐝 Budget Bee Member</div>
     </div>
   </div>
@@ -267,14 +267,14 @@ body {
           <label>Full Name</label>
           <div class="field-wrap">
             <span class="field-icon">👤</span>
-            <input type="text" name="username" id="username-input" value="username" required>
+            <input type="text" name="username" id="username-input" value="{{ username }}" required>
           </div>
         </div>
         <div class="form-group">
           <label>Email Address</label>
           <div class="field-wrap">
             <span class="field-icon">✉️</span>
-            <input type="email" name="email" id="email-input" value="john.doe@email.com" required>
+            <input type="email" name="email" id="email-input" value="{{ email }}" required>
           </div>
         </div>
       </div>
@@ -356,9 +356,8 @@ function checkStrength(pw) {
 }
 
 const uname = document.getElementById('sb-name').textContent.trim();
-if (uname) {
+if (uname && uname !== '{{ username }}') {
   document.getElementById('sb-avatar').textContent = uname.charAt(0).toUpperCase();
-  document.getElementById('avatar-initials').textContent = uname.charAt(0).toUpperCase();
 }
 </script>
 
