@@ -421,7 +421,11 @@ tbody tr:hover { background: #fffaf0; }
     <!-- Income input -->
     <div class="calc-income-row">
       <div class="calc-income-label">💰 My Monthly Income (RM)</div>
-      <input type="number" class="calc-income-input" id="calc-income" placeholder="0.00" min="0" step="0.01" oninput="recalc()"/>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="calc-income-display" style="font-size:18px;font-weight:700;color:var(--honey-dk);min-width:120px;text-align:right">RM 0.00</div>
+        <input type="hidden" id="calc-income" value="0"/>
+        <span style="font-size:11px;color:var(--muted);background:var(--comb);padding:3px 8px;border-radius:20px;border:1px solid var(--border)">Auto from records</span>
+      </div>
     </div>
 
     <!-- Preset templates -->
@@ -605,6 +609,15 @@ function renderBreakdown(data) {
 
   const total    = data.reduce((s,i) => s + i.amount, 0);
   const byType   = {};
+
+  // ── Sync total income to calculator ──────────────────
+  const calcInput = document.getElementById('calc-income');
+  const calcDisplay = document.getElementById('calc-income-display');
+  if (calcInput && calcDisplay) {
+    calcInput.value = total.toFixed(2);
+    calcDisplay.textContent = 'RM ' + total.toFixed(2);
+    recalc();
+  }
   data.forEach(i => byType[i.income_type] = (byType[i.income_type] || 0) + i.amount);
 
   container.innerHTML = Object.entries(byType)
