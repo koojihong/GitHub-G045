@@ -217,6 +217,20 @@ body {
 .form-footer { text-align: center; font-size: 14px; color: var(--muted); }
 .form-footer a { color: var(--honey); text-decoration: none; font-weight: 500; }
 .form-footer a:hover { color: var(--honey-dk); text-decoration: underline; }
+
+.toggle-pw {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--muted);
+  user-select: none;
+  transition: color 0.2s;
+}
+.toggle-pw:hover { color: var(--honey); }
+
 </style>
 </head>
 <body>
@@ -298,7 +312,8 @@ body {
           <div class="field-wrap">
             <span class="field-icon">🔒</span>
             <input type="password" id="password" name="password" placeholder="Min 6 chars" required minlength="6"
-                   oninput="checkStrength(this.value)"/>
+              oninput="checkStrength(this.value)"/>
+            <span class="toggle-pw" onclick="togglePassword('password', 'tog1')" id="tog1">👁</span>
           </div>
           <div class="pw-strength">
             <div class="pw-bar-bg"><div class="pw-bar-fill" id="pw-bar" style="width:0%;background:#e5e7eb"></div></div>
@@ -311,6 +326,7 @@ body {
           <div class="field-wrap">
             <span class="field-icon">🔑</span>
             <input type="password" id="confirm" name="confirm" placeholder="Repeat password" required/>
+            <span class="toggle-pw" onclick="togglePassword('confirm', 'tog2')" id="tog2">👁</span>
           </div>
         </div>
       </div>
@@ -359,6 +375,21 @@ function checkStrength(pw) {
   bar.style.background = lvl.c;
   label.textContent    = lvl.t;
   label.style.color    = score < 2 ? '#9A8878' : lvl.c;
+}
+</script>
+
+<script>
+function togglePassword(fieldId, toggleId) {
+  const input  = document.getElementById(fieldId);
+  const toggle = document.getElementById(toggleId);
+
+  if (input.type === 'password') {
+    input.type         = 'text';
+    toggle.textContent = '👁';   // unlocked = visible
+  } else {
+    input.type         = 'password';
+    toggle.textContent = '👁';   // locked = hidden
+  }
 }
 </script>
 
