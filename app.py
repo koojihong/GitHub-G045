@@ -132,19 +132,25 @@ def update_settings():
 def get_data():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
- 
-    user = User.query.get(session['user_id'])
- 
-    expenses = Expense.query.filter_by(user_id=session['user_id']).all()
-    total_spent = sum(e.amount for e in expenses)
- 
+
+    user        = User.query.get(session['user_id'])
+    expenses    = Expense.query.filter_by(user_id=session['user_id']).all()
+    incomes     = Income.query.filter_by(user_id=session['user_id']).all()
+
+    total_spent  = sum(e.amount for e in expenses)
+    total_income = sum(i.amount for i in incomes)     # ← sum of all income entries
+
+    # If user has no income entries yet, fall back to setup income
+    if total_income == 0:
+        total_income = user.income or 0
+
     return jsonify({
-        'income':       user.income,
-        'spent':        total_spent,
-        'balance':      user.income - total_spent,
-        'limit':        user.budget_limit,
+        'income':  total_income,
+        'spent':   total_spent,
+        'balance': total_income - total_spent,
+        'limit':   user.budget_limit,
     })
- 
+
 # ── Income Page ───────────────────────────────────────
 @app.route('/income')
 def income_page():

@@ -15,15 +15,15 @@ function loadData() {
             document.getElementById("metrics-grid").innerHTML = `
                 <div class="metric-card">
                     <div class="metric-label">Income</div>
-                    <div class="metric-value green">$${data.income}</div>
+                    <div class="metric-value green">RM ${data.income.toFixed(2)}</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">Total Spent</div>
-                    <div class="metric-value red">$${data.spent}</div>
+                    <div class="metric-value red">RM ${data.spent.toFixed(2)}</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">Balance</div>
-                    <div class="metric-value honey">$${data.balance}</div>
+                    <div class="metric-value honey">RM ${data.balance.toFixed(2)}</div>
                 </div>
             `;
 
@@ -52,10 +52,15 @@ function addTransaction() {
     const amount = document.getElementById("tx-amount").value;
     const category = document.getElementById("tx-category").value;
 
-    fetch("/api/add", {
+    fetch("/api/expenses/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ desc, amount, category })
+        body: JSON.stringify({ 
+          description: desc, 
+          amount:      parseFloat(amount), 
+          category:    category,
+          date:        new Date().toISOString().slice(0,10)  // today's date
+        })
     })
     .then(res => res.json())
     .then(() => {

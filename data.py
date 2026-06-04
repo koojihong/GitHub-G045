@@ -82,16 +82,6 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     """)
-    db.execute("""
-        CREATE TABLE IF NOT EXISTS user_setup (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id     INTEGER NOT NULL UNIQUE,
-            monthly_income REAL DEFAULT 0,
-            budget_limit   REAL DEFAULT 0,
-            setup_done  INTEGER DEFAULT 0,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    """)
     db.commit()
     db.close()
 
@@ -474,39 +464,6 @@ def reset_password(token):
     return render_template("reset_password.html", invalid=invalid, token=token)
 
 
-# ── SETUP (first-time onboarding after register) ──────────────────────────
-
-@app.route("/setup", methods=["GET", "POST"])
-@login_required
-def setup():
-    uid = session["user_id"]
-    if request.method == "POST":
-        monthly_income = request.form.get("income", 0)
-        budget_limit   = request.form.get("budget_limit", 0)
-        db = get_db()
-        db.execute(
-            """INSERT INTO user_setup (user_id, monthly_income, budget_limit, setup_done)
-               VALUES (?,?,?,1)
-               ON CONFLICT(user_id) DO UPDATE SET
-               monthly_income=excluded.monthly_income,
-               budget_limit=excluded.budget_limit,
-               setup_done=1""",
-            (uid, float(monthly_income), float(budget_limit))
-        )
-        # Also save budget for current month
-        month = datetime.date.today().strftime("%Y-%m")
-        db.execute(
-            """INSERT INTO budget (user_id,month,budget,alert_pct) VALUES (?,?,?,70)
-               ON CONFLICT(user_id,month) DO UPDATE SET budget=excluded.budget""",
-            (uid, month, float(budget_limit))
-        )
-        db.commit()
-        db.close()
-        flash("Setup complete! Your budget and income have been saved. 🎉", "success")
-        return redirect(url_for("dashboard"))
-    return render_template("setup.html", **sv())
-
-
 # ── STATIC PAGES ──────────────────────────────────────────────────────────
 
 @app.route("/terms")
@@ -523,22 +480,87 @@ def income():
     return render_template("income.html", **sv())
 
 
-# ── INCOME API (used by income.html via fetch) ─────────────────────────────
+
+# ══════════════════════════════════════════════════════════════════════════
+# API ROUTES — called by fetch() in templates
+# ══════════════════════════════════════════════════════════════════════════
+
+# ── EXPENSES API ─────────────────────────────────────────────────────────
+
+@app.route("/api/expenses")
+@login_required
+def api_expenses_get():
+    uid   = session["user_id"]
+    month = request.args.get("month", datetime.date.today().strftime("%m")).zfill(2)
+    year  = request.args.get("year",  datetime.date.today().strftime("%Y"))
+    db    = get_db()
+    rows  = db.execute(
+        """SELECT * FROM expenses
+           WHERE user_id=?
+             AND strftime('%m',date)=?
+             AND strftime('%Y',date)=?
+           ORDER BY date DESC""",
+        (uid, month, year)
+    ).fetchall()
+    total = sum(r["amount"] for r in rows)
+    db.close()
+    return {"expenses": [dict(r) for r in rows], "total": round(total, 2)}
+
+
+@app.route("/api/expenses/add", methods=["POST"])
+@login_required
+def api_expenses_add():
+    uid  = session["user_id"]
+    data = request.get_json()
+    desc     = data.get("description", "").strip()
+    amount   = data.get("amount", 0)
+    category = data.get("category", "others")
+    date     = data.get("date", datetime.date.today().isoformat())
+    if not desc or not amount:
+        return {"error": "Description and amount are required"}, 400
+    db  = get_db()
+    cur = db.execute(
+        "INSERT INTO expenses (user_id,description,category,amount,date) VALUES (?,?,?,?,?)",
+        (uid, desc, category, float(amount), date)
+    )
+    db.commit()
+    new_id = cur.lastrowid
+    db.close()
+    return {"id": new_id, "description": desc, "category": category,
+            "amount": float(amount), "date": date}, 201
+
+
+@app.route("/api/expenses/delete/<int:eid>", methods=["DELETE"])
+@login_required
+def api_expenses_delete(eid):
+    uid = session["user_id"]
+    db  = get_db()
+    db.execute("DELETE FROM expenses WHERE id=? AND user_id=?", (eid, uid))
+    db.commit()
+    db.close()
+    return {"deleted": eid}
+
+
+# ── INCOME API ────────────────────────────────────────────────────────────
 
 @app.route("/api/income")
 @login_required
 def api_income_get():
     uid   = session["user_id"]
-    month = request.args.get("month", datetime.date.today().strftime("%m"))
+    month = request.args.get("month", datetime.date.today().strftime("%m")).zfill(2)
     year  = request.args.get("year",  datetime.date.today().strftime("%Y"))
     db    = get_db()
     rows  = db.execute(
-        "SELECT * FROM income WHERE user_id=? AND strftime('%m',date)=? AND strftime('%Y',date)=? ORDER BY date DESC",
-        (uid, month.zfill(2), year)
+        """SELECT * FROM income
+           WHERE user_id=?
+             AND strftime('%m',date)=?
+             AND strftime('%Y',date)=?
+           ORDER BY date DESC""",
+        (uid, month, year)
     ).fetchall()
     total = sum(r["amount"] for r in rows)
     db.close()
-    return {"income": [dict(r) for r in rows], "total": total}
+    return {"income": [dict(r) for r in rows], "total": round(total, 2)}
 
 
 @app.route("/api/income/add", methods=["POST"])
@@ -546,32 +568,108 @@ def api_income_get():
 def api_income_add():
     uid  = session["user_id"]
     data = request.get_json()
-    desc   = data.get("description", "").strip()
-    amount = data.get("amount", 0)
-    itype  = data.get("type", "salary")
-    date   = data.get("date", datetime.date.today().isoformat())
+    desc        = data.get("description", "").strip()
+    amount      = data.get("amount", 0)
+    income_type = data.get("income_type", "salary")
+    date        = data.get("date", datetime.date.today().isoformat())
     if not desc or not amount:
-        return {"error": "Description and amount required"}, 400
-    db = get_db()
+        return {"error": "Description and amount are required"}, 400
+    db  = get_db()
     cur = db.execute(
         "INSERT INTO income (user_id,description,amount,type,date) VALUES (?,?,?,?,?)",
-        (uid, desc, float(amount), itype, date)
+        (uid, desc, float(amount), income_type, date)
     )
     db.commit()
-    row_id = cur.lastrowid
+    new_id = cur.lastrowid
     db.close()
-    return {"id": row_id, "description": desc, "amount": float(amount), "type": itype, "date": date}
+    return {"id": new_id, "description": desc, "amount": float(amount),
+            "income_type": income_type, "date": date}, 201
 
 
-@app.route("/api/income/delete/<int:income_id>", methods=["DELETE"])
+@app.route("/api/income/delete/<int:iid>", methods=["DELETE"])
 @login_required
-def api_income_delete(income_id):
+def api_income_delete(iid):
     uid = session["user_id"]
     db  = get_db()
-    db.execute("DELETE FROM income WHERE id=? AND user_id=?", (income_id, uid))
+    db.execute("DELETE FROM income WHERE id=? AND user_id=?", (iid, uid))
     db.commit()
     db.close()
-    return {"deleted": income_id}
+    return {"deleted": iid}
+
+
+# ── SAVINGS API ───────────────────────────────────────────────────────────
+
+@app.route("/api/savings")
+@login_required
+def api_savings_get():
+    uid  = session["user_id"]
+    db   = get_db()
+    rows = db.execute(
+        "SELECT * FROM savings WHERE user_id=? ORDER BY created_at DESC", (uid,)
+    ).fetchall()
+    db.close()
+    goals = []
+    for r in rows:
+        g = dict(r)
+        g["progress_pct"] = round((g["saved"] / g["target"]) * 100, 1) if g["target"] > 0 else 0
+        g["remaining"]    = round(g["target"] - g["saved"], 2)
+        goals.append(g)
+    return {"goals": goals}
+
+
+@app.route("/api/savings/add", methods=["POST"])
+@login_required
+def api_savings_add():
+    uid  = session["user_id"]
+    data = request.get_json()
+    name          = data.get("name", "").strip()
+    target_amount = data.get("target_amount", 0)
+    deadline      = data.get("deadline") or None
+    if not name or not target_amount:
+        return {"error": "Goal name and target amount are required"}, 400
+    db  = get_db()
+    cur = db.execute(
+        "INSERT INTO savings (user_id,goal_name,target,target_date) VALUES (?,?,?,?)",
+        (uid, name, float(target_amount), deadline)
+    )
+    db.commit()
+    new_id = cur.lastrowid
+    db.close()
+    return {"id": new_id, "name": name, "target_amount": float(target_amount),
+            "saved": 0, "progress_pct": 0, "deadline": deadline}, 201
+
+
+@app.route("/api/savings/topup/<int:gid>", methods=["POST"])
+@login_required
+def api_savings_topup(gid):
+    uid  = session["user_id"]
+    data = request.get_json()
+    amount = float(data.get("amount", 0))
+    if amount <= 0:
+        return {"error": "Amount must be greater than 0"}, 400
+    db   = get_db()
+    goal = db.execute(
+        "SELECT * FROM savings WHERE id=? AND user_id=?", (gid, uid)
+    ).fetchone()
+    if not goal:
+        db.close()
+        return {"error": "Goal not found"}, 404
+    new_saved = min(goal["saved"] + amount, goal["target"])
+    db.execute("UPDATE savings SET saved=? WHERE id=?", (new_saved, gid))
+    db.commit()
+    db.close()
+    return {"id": gid, "saved": new_saved, "completed": new_saved >= goal["target"]}
+
+
+@app.route("/api/savings/delete/<int:gid>", methods=["DELETE"])
+@login_required
+def api_savings_delete(gid):
+    uid = session["user_id"]
+    db  = get_db()
+    db.execute("DELETE FROM savings WHERE id=? AND user_id=?", (gid, uid))
+    db.commit()
+    db.close()
+    return {"deleted": gid}
 
 # ── INIT ──────────────────────────────────────────────────────────────────
 init_db()

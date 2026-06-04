@@ -342,13 +342,19 @@ if (uname && !uname.includes('{')) {
 
 // ── Load all goals on page open ───────────────────────
 async function loadGoals() {
-  const res   = await fetch('/api/savings');
-  const goals = await res.json();
-
-  if (goals.error) {
+  const res   = await fetch('/api/savings', { credentials: 'same-origin' });
+  const json   = await res.json();
+  if (json.error) {
     showAlert('Session expired. Please login again.');
     return;
   }
+  const goals = (json.goals || []).map(g => ({
+    ...g,
+    name:          g.goal_name,
+    saved_amount:  g.saved,
+    target_amount: g.target,
+    deadline:      g.target_date
+  }));
 
   const container = document.getElementById('goals-container');
   const tag       = document.getElementById('goals-tag');
@@ -413,6 +419,7 @@ async function addGoal(e) {
 
   const res = await fetch('/api/savings/add', {
     method:  'POST',
+    credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({ name, target_amount: parseFloat(target_amount), deadline })
   });
@@ -435,6 +442,7 @@ async function depositGoal(id, remaining) {
 
   const res = await fetch(`/api/savings/topup/${id}`, {
     method:  'POST',
+    credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({ amount: parseFloat(amount) })
   });
@@ -449,7 +457,7 @@ async function depositGoal(id, remaining) {
 // ── Delete a goal ─────────────────────────────────────
 async function deleteGoal(id) {
   if (!confirm('Delete this savings goal?')) return;
-  await fetch(`/api/savings/delete/${id}`, { method: 'DELETE' });
+  await fetch(`/api/savings/delete/${id}`, { method: 'DELETE', credentials: 'same-origin' });
   loadGoals();
 }
 
