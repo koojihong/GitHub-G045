@@ -74,13 +74,15 @@ def get_expenses():
  
     expenses = query.order_by(Expense.date.desc()).all()
  
-    return jsonify([{
-        'id':          e.id,
-        'description': e.description,
-        'amount':      e.amount,
-        'category':    e.category,
-        'date':        e.date.strftime('%Y-%m-%d')
-    } for e in expenses])
+    return jsonify({
+        'expenses': [{
+            'id':          e.id,
+            'description': e.description,
+            'amount':      e.amount,
+            'category':    e.category,
+            'date':        e.date.strftime('%Y-%m-%d')
+        } for e in expenses]
+    })
  
 # ── Add New Expense ────────────────────────────────────
 @app.route('/api/expenses/add', methods=['POST'])
