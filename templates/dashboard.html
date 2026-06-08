@@ -5,70 +5,226 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Budget Bee — Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-// Load data from Python when page opens
-function loadData() {
-    fetch("/api/data")
-        .then(res => res.json())
-        .then(data => {
-            // Fill metric cards
-            document.getElementById("metrics-grid").innerHTML = `
-                <div class="metric-card">
-                    <div class="metric-label">Income</div>
-                    <div class="metric-value green">RM ${data.income.toFixed(2)}</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Total Spent</div>
-                    <div class="metric-value red">RM ${data.spent.toFixed(2)}</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Balance</div>
-                    <div class="metric-value honey">RM ${data.balance.toFixed(2)}</div>
-                </div>
-            `;
+const CAT_COLORS = {
+  food:'#2D8A5A', transport:'#3572B8', shopping:'#6B50C8',
+  health:'#D64545', entertainment:'#C4507A', utilities:'#1B8C8C', others:'#9A8878'
+};
 
-            // Fill transactions list
-            let txHTML = "";
-            data.transactions.forEach(t => {
-                txHTML += `
-                    <div class="tx-row">
-                        <div class="tx-icon">💸</div>
-                        <div class="tx-info">
-                            <div class="tx-desc">${t.desc}</div>
-                            <div class="tx-meta">${t.category}</div>
-                        </div>
-                        <div class="tx-amt">-$${t.amount}</div>
-                    </div>
-                `;
-            });
-            document.getElementById("tx-list").innerHTML = 
-                txHTML || "<p style='color:var(--muted);font-size:13px'>No transactions yet</p>";
-        });
+let trendChart = null, ringChart = null, donutChart = null;
+let currentMonth = new Date().toISOString().slice(0,7); // e.g. "2026-06"
+
+// ── helpers ──────────────────────────────────────────
+function rm(n){ return 'RM ' + (n||0).toFixed(2); }
+function fmtDate(d){ if(!d) return ''; const [y,m,day]=d.split('-'); return m+'/'+day+'/'+y; }
+
+// ── main loader ──────────────────────────────────────
+function loadData(monthStr) {
+    if (monthStr) currentMonth = monthStr;
+    const [year, month] = currentMonth.split('-');
+
+    Promise.all([
+        fetch(`/api/expenses?month=${month}&year=${year}`).then(r=>r.json()),
+        fetch(`/api/income?month=${month}&year=${year}`).then(r=>r.json()),
+        fetch('/api/savings').then(r=>r.json()),
+        // budget is embedded in template; read it once
+    ]).then(([expData, incData, savData]) => {
+        const spent   = expData.total   || 0;
+        const income  = incData.total   || 0;
+        const balance = income - spent;
+
+        // ── Metric cards ─────────────────────────────
+        document.getElementById('metrics-grid').innerHTML = `
+            <div class="metric-card">
+                <div class="metric-icon" style="background:#EDFDF5">💰</div>
+                <div class="metric-label">Income</div>
+                <div class="metric-value green">${rm(income)}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon" style="background:#FDEEEE">💸</div>
+                <div class="metric-label">Total Spent</div>
+                <div class="metric-value red">${rm(spent)}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon" style="background:#FFF4E0">⚖️</div>
+                <div class="metric-label">Balance</div>
+                <div class="metric-value honey">${rm(balance)}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon" style="background:#F3E8FF">🎯</div>
+                <div class="metric-label">Savings Goals</div>
+                <div class="metric-value" style="color:var(--purple,#6B50C8)">${savData.goals.length}</div>
+            </div>
+        `;
+
+        // ── Budget ring ───────────────────────────────
+        const budgetEl = document.getElementById('b-limit');
+        const budgetVal = parseFloat(budgetEl.dataset.budget || 0);
+        renderBudgetRing(spent, budgetVal);
+
+        // ── Spending trend chart ──────────────────────
+        renderTrendChart(expData.expenses || []);
+
+        // ── Category donut ────────────────────────────
+        renderDonut(expData.expenses || [], spent);
+
+        // ── Savings goals ─────────────────────────────
+        renderSavings(savData.goals || []);
+
+        // ── Recent transactions ───────────────────────
+        renderTransactions(expData.expenses || []);
+    }).catch(err => console.error('Dashboard load error:', err));
 }
 
-// Add a new transaction
-function addTransaction() {
-    const desc = document.getElementById("tx-desc").value;
-    const amount = document.getElementById("tx-amount").value;
-    const category = document.getElementById("tx-category").value;
+// ── Budget ring ───────────────────────────────────────
+function renderBudgetRing(spent, budget) {
+    const pct = budget > 0 ? Math.min((spent/budget)*100, 100) : 0;
+    document.getElementById('ring-pct').textContent = pct.toFixed(0) + '%';
+    document.getElementById('b-spent').textContent  = rm(spent);
+    document.getElementById('b-limit').textContent  = budget > 0 ? rm(budget) : '—';
+    document.getElementById('b-left').textContent   = budget > 0 ? rm(Math.max(budget-spent,0)) : '—';
 
-    fetch("/api/expenses/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          description: desc, 
-          amount:      parseFloat(amount), 
-          category:    category,
-          date:        new Date().toISOString().slice(0,10)  // today's date
-        })
-    })
-    .then(res => res.json())
-    .then(() => {
-        loadData();  // refresh the dashboard
+    const color = pct >= 100 ? '#D64545' : pct >= 70 ? '#C47B0E' : '#2D8A5A';
+    const ctx = document.getElementById('ringChart').getContext('2d');
+    if (ringChart) ringChart.destroy();
+    ringChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: { datasets: [{ data: [pct, 100-pct], backgroundColor: [color, '#FDF3DC'], borderWidth: 0 }] },
+        options: { cutout: '75%', plugins: { legend: { display:false }, tooltip: { enabled:false } }, animation: { duration: 700 } }
     });
 }
 
-// Load data when page first opens
+// ── Trend chart ───────────────────────────────────────
+function renderTrendChart(expenses) {
+    // Group by day of month
+    const days = {};
+    expenses.forEach(e => {
+        const d = e.date ? e.date.slice(8,10) : '??';
+        days[d] = (days[d]||0) + e.amount;
+    });
+    const labels = Object.keys(days).sort();
+    const values = labels.map(d => days[d]);
+
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    if (trendChart) trendChart.destroy();
+    trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Daily Spend',
+                data: values,
+                borderColor: '#C47B0E',
+                backgroundColor: 'rgba(196,123,14,0.08)',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointBackgroundColor: '#C47B0E',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display:false } },
+            scales: {
+                x: { grid: { display:false }, ticks: { font:{ size:11 } } },
+                y: { grid: { color:'rgba(0,0,0,0.04)' }, ticks: { font:{ size:11 }, callback: v => 'RM'+v } }
+            }
+        }
+    });
+}
+
+// ── Category donut ─────────────────────────────────────
+function renderDonut(expenses, total) {
+    const cats = {};
+    expenses.forEach(e => { cats[e.category] = (cats[e.category]||0) + e.amount; });
+    const labels = Object.keys(cats);
+    const values = labels.map(k => cats[k]);
+    const colors = labels.map(k => CAT_COLORS[k] || '#9A8878');
+
+    document.getElementById('cat-total-tag').textContent = rm(total);
+
+    const ctx = document.getElementById('donutChart').getContext('2d');
+    if (donutChart) donutChart.destroy();
+    if (labels.length === 0) {
+        document.getElementById('cat-list').innerHTML = "<p style='color:var(--muted);font-size:13px'>No expenses this month</p>";
+        return;
+    }
+    donutChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0 }] },
+        options: { cutout:'65%', plugins:{ legend:{display:false} }, animation:{duration:700} }
+    });
+
+    document.getElementById('cat-list').innerHTML = labels.map((k,i) => `
+        <div class="cat-item">
+            <div class="cat-dot" style="background:${colors[i]}"></div>
+            <div class="cat-name">${k}</div>
+            <div class="cat-amt">${rm(values[i])}</div>
+            <div class="cat-pct">${total>0?(values[i]/total*100).toFixed(0):'0'}%</div>
+        </div>
+    `).join('');
+}
+
+// ── Savings goals ──────────────────────────────────────
+function renderSavings(goals) {
+    document.getElementById('sav-panel-tag').textContent = goals.length + ' goal' + (goals.length!==1?'s':'');
+    if (!goals.length) {
+        document.getElementById('savings-goals').innerHTML = "<p style='color:var(--muted);font-size:13px'>No savings goals yet</p>";
+        return;
+    }
+    document.getElementById('savings-goals').innerHTML = goals.slice(0,3).map(g => `
+        <div class="goal-item">
+            <div class="goal-row">
+                <span class="goal-name">${g.goal_name}</span>
+                <span class="goal-pct">${g.progress_pct}%</span>
+            </div>
+            <div class="goal-row">
+                <span class="goal-meta">${rm(g.saved)} / ${rm(g.target)}</span>
+            </div>
+            <div class="prog-bar"><div class="prog-fill" style="width:${g.progress_pct}%;background:var(--honey)"></div></div>
+        </div>
+    `).join('');
+}
+
+// ── Recent transactions ────────────────────────────────
+function renderTransactions(expenses) {
+    const recent = expenses.slice(0, 5);
+    document.getElementById('tx-count-tag').textContent = recent.length + ' recent';
+    const catIcons = { food:'🍜', transport:'🚗', shopping:'🛍️', health:'💊', entertainment:'🎉', utilities:'💡', others:'💸' };
+    document.getElementById('tx-list').innerHTML = recent.length
+        ? recent.map(t => `
+            <div class="tx-row">
+                <div class="tx-icon" style="background:var(--comb)">${catIcons[t.category]||'💸'}</div>
+                <div class="tx-info">
+                    <div class="tx-desc">${t.description}</div>
+                    <div class="tx-meta">${t.category} · ${fmtDate(t.date)}</div>
+                </div>
+                <div class="tx-amt">-${rm(t.amount)}</div>
+            </div>`).join('')
+        : "<p style='color:var(--muted);font-size:13px'>No transactions yet</p>";
+}
+
+// ── Month picker ───────────────────────────────────────
+function changeMonth(val) {
+    currentMonth = val;
+    // Update the trend chart panel label to match
+    const [y, m] = val.split('-');
+    const label = new Date(y, m-1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+    const tag = document.getElementById('trend-month-tag');
+    if (tag) tag.textContent = label;
+    loadData(val);
+}
+
+// ── Init ───────────────────────────────────────────────
+// Sync trend label to the initially selected month
+(function(){
+    const [y, m] = currentMonth.split('-');
+    const label = new Date(y, m-1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+    const tag = document.getElementById('trend-month-tag');
+    if (tag) tag.textContent = label;
+})();
 loadData();
 </script>
 
@@ -340,14 +496,14 @@ body {
     <div class="month-select">
       📅&nbsp;
       <select id="month-picker" onchange="changeMonth(this.value)">
-        <option value="2026-01" selected>May 2026</option>
-        <option value="2026-02">June 2026</option>
-        <option value="2026-03">July 2026</option>
-        <option value="2026-04">August 2026</option>
-        <option value="2026-05">September 2026</option>
-        <option value="2026-06">October 2026</option>
-        <option value="2026-07">November 2026</option>
-        <option value="2026-08">December 2026</option>
+        <option value="2026-05">May 2026</option>
+        <option value="2026-06" selected>June 2026</option>
+        <option value="2026-07">July 2026</option>
+        <option value="2026-08">August 2026</option>
+        <option value="2026-09">September 2026</option>
+        <option value="2026-10">October 2026</option>
+        <option value="2026-11">November 2026</option>
+        <option value="2026-12">December 2026</option>
       </select>
     </div>
   </div>
@@ -363,7 +519,7 @@ body {
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title">Monthly Spending Trend</div>
-        <span class="panel-tag">May 2026</span>
+        <span class="panel-tag" id="trend-month-tag">May 2026</span>
       </div>
       <div class="chart-wrap-tall"><canvas id="trendChart"></canvas></div>
     </div>
@@ -382,7 +538,7 @@ body {
       </div>
       <div class="budget-stats">
         <div><div class="bstat-label">Spent</div><div class="bstat-value" id="b-spent" style="color:var(--red)">—</div></div>
-        <div style="text-align:center"><div class="bstat-label">Limit</div><div class="bstat-value" id="b-limit" style="color:var(--honey)">—</div></div>
+        <div style="text-align:center"><div class="bstat-label">Limit</div><div class="bstat-value" id="b-limit" data-budget="{{ budget or 0 }}" style="color:var(--honey)">—</div></div>
         <div style="text-align:right"><div class="bstat-label">Left</div><div class="bstat-value" id="b-left" style="color:var(--green)">—</div></div>
       </div>
     </div>

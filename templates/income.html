@@ -567,9 +567,9 @@ async function loadIncome() {
     return;
   }
 
-  renderTable(data);
-  renderBreakdown(data);
-  updateSummary(data);
+  renderTable(data.income || []);
+  renderBreakdown(data.income || []);
+  updateSummary(data.income || []);
 }
 
 // ── Render table ──────────────────────────────────────
@@ -588,11 +588,11 @@ function renderTable(data) {
       <td style="color:var(--muted)">${i.date}</td>
       <td>
         <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:16px">${typeIcon[i.income_type] || '📦'}</span>
+          <span style="font-size:16px">${typeIcon[i.type] || '📦'}</span>
           <span style="font-weight:500">${i.description}</span>
         </div>
       </td>
-      <td><span class="badge type-${i.income_type.replace(' ','-')}">${i.income_type}</span></td>
+      <td><span class="badge type-${(i.type||'Other').replace(' ','-')}">${i.type}</span></td>
       <td style="font-weight:600;color:var(--green)">+ RM ${i.amount.toFixed(2)}</td>
       <td><button class="btn-del" onclick="deleteIncome(${i.id})" title="Delete">🗑</button></td>
     </tr>
@@ -618,7 +618,7 @@ function renderBreakdown(data) {
     calcDisplay.textContent = 'RM ' + total.toFixed(2);
     recalc();
   }
-  data.forEach(i => byType[i.income_type] = (byType[i.income_type] || 0) + i.amount);
+  data.forEach(i => byType[i.type] = (byType[i.type] || 0) + i.amount);
 
   container.innerHTML = Object.entries(byType)
     .sort((a,b) => b[1]-a[1])
@@ -674,7 +674,7 @@ function updateSummary(data) {
       </div>
       <div style="display:flex;justify-content:space-between;font-size:13px">
         <span style="color:var(--muted)">Income types</span>
-        <span style="font-weight:600">${[...new Set(data.map(i=>i.income_type))].join(', ')}</span>
+        <span style="font-weight:600">${[...new Set(data.map(i=>i.type))].join(', ')}</span>
       </div>
     </div>`;
 }
