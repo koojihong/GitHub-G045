@@ -199,6 +199,11 @@ def dashboard():
         (uid, f"{month}%")
     ).fetchone()["t"]
 
+    income_total = db.execute(
+        "SELECT COALESCE(SUM(amount),0) AS t FROM income WHERE user_id=? AND date LIKE ?",
+        (uid, f"{month}%")
+    ).fetchone()["t"]
+
     bud = db.execute(
         "SELECT budget FROM budget WHERE user_id=? AND month=?", (uid, month)
     ).fetchone()
@@ -214,6 +219,7 @@ def dashboard():
     db.close()
     return render_template("dashboard.html", **sv(),
                            total_spent=total,
+                           income_total=income_total,
                            budget=bud["budget"] if bud else None,
                            recent=recent,
                            savings=savings)
