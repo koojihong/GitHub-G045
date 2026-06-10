@@ -13,7 +13,7 @@ const CAT_COLORS = {
 };
 
 let trendChart = null, ringChart = null, donutChart = null;
-let currentMonth = new Date().toISOString().slice(0,7); // e.g. "2026-06"
+let currentMonth = new Date().toISOString().slice(0,7); 
 
 // ── helpers ──────────────────────────────────────────
 function rm(n){ return 'RM ' + (n||0).toFixed(2); }
@@ -28,10 +28,17 @@ function loadData(monthStr) {
         fetch(`/api/expenses?month=${month}&year=${year}`).then(r=>r.json()),
         fetch(`/api/income?month=${month}&year=${year}`).then(r=>r.json()),
         fetch('/api/savings').then(r=>r.json()),
-        // budget is embedded in template; read it once
-    ]).then(([expData, incData, savData]) => {
-        const spent   = expData.total   || 0;
-        const income  = incData.total   || 0;
+      ]).then(([expData, incData, savData]) => {
+        // FIX: /api/expenses returns {expenses:[...]}
+        const expList = expData.expenses || [];
+        // FIX: /api/income returns plain array
+        const incList = Array.isArray(incData) ? incData : [];
+        // FIX: /api/savings returns plain array
+        const savList = Array.isArray(savData) ? savData : [];
+
+        // Calculate totals from the lists
+        const spent   = expList.reduce((s, e) => s + e.amount, 0);
+        const income  = incList.reduce((s, i) => s + i.amount, 0);
         const balance = income - spent;
 
         // ── Metric cards ─────────────────────────────
@@ -54,7 +61,7 @@ function loadData(monthStr) {
             <div class="metric-card">
                 <div class="metric-icon" style="background:#F3E8FF">🎯</div>
                 <div class="metric-label">Savings Goals</div>
-                <div class="metric-value" style="color:var(--purple,#6B50C8)">${savData.goals.length}</div>
+                <div class="metric-value" style="color:var(--purple,#6B50C8)">${savList.length}</div>
             </div>
         `;
 
@@ -64,16 +71,16 @@ function loadData(monthStr) {
         renderBudgetRing(spent, budgetVal);
 
         // ── Spending trend chart ──────────────────────
-        renderTrendChart(expData.expenses || []);
+        renderTrendChart(expList);
 
         // ── Category donut ────────────────────────────
-        renderDonut(expData.expenses || [], spent);
+        renderDonut(expList, spent);
 
         // ── Savings goals ─────────────────────────────
-        renderSavings(savData.goals || []);
+        renderSavings(savList);
 
         // ── Recent transactions ───────────────────────
-        renderTransactions(expData.expenses || []);
+        renderTransactions(expList);
     }).catch(err => console.error('Dashboard load error:', err));
 }
 
@@ -174,18 +181,20 @@ function renderSavings(goals) {
         document.getElementById('savings-goals').innerHTML = "<p style='color:var(--muted);font-size:13px'>No savings goals yet</p>";
         return;
     }
-    document.getElementById('savings-goals').innerHTML = goals.slice(0,3).map(g => `
+    document.getElementById('savings-goals').innerHTML = goals.slice(0,3).map(g => {
+        const pct = g.target_amount > 0 ? Math.min((g.saved_amount / g.target_amount) * 100, 100) : 0;
+        return `
         <div class="goal-item">
             <div class="goal-row">
-                <span class="goal-name">${g.goal_name}</span>
-                <span class="goal-pct">${g.progress_pct}%</span>
+                <span class="goal-name">${g.name}</span>
+                <span class="goal-pct">${pct.toFixed(0)}%</span>
             </div>
             <div class="goal-row">
-                <span class="goal-meta">${rm(g.saved)} / ${rm(g.target)}</span>
+                <span class="goal-meta">${rm(g.saved_amount)} / ${rm(g.target_amount)}</span>
             </div>
-            <div class="prog-bar"><div class="prog-fill" style="width:${g.progress_pct}%;background:var(--honey)"></div></div>
-        </div>
-    `).join('');
+            <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:var(--honey)"></div></div>
+        </div>`;
+    }).join('');
 }
 
 // ── Recent transactions ────────────────────────────────
@@ -206,25 +215,37 @@ function renderTransactions(expenses) {
         : "<p style='color:var(--muted);font-size:13px'>No transactions yet</p>";
 }
 
-// ── Month picker ───────────────────────────────────────
-function changeMonth(val) {
-    currentMonth = val;
-    // Update the trend chart panel label to match
-    const [y, m] = val.split('-');
+// ── Month navigation ──────────────────────────────────
+function updateMonthLabel() {
+    const [y, m] = currentMonth.split('-');
     const label = new Date(y, m-1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+    document.getElementById('month-label').textContent = label;
     const tag = document.getElementById('trend-month-tag');
     if (tag) tag.textContent = label;
-    loadData(val);
+}
+
+function prevMonth() {
+    const [y, m] = currentMonth.split('-');
+    const d = new Date(y, m-1, 1);
+    d.setMonth(d.getMonth() - 1);
+    currentMonth = d.toISOString().slice(0,7);
+    updateMonthLabel();
+    loadData(currentMonth);
+}
+
+function nextMonth() {
+    const [y, m] = currentMonth.split('-');
+    const d = new Date(y, m-1, 1);
+    const nowStr = new Date().toISOString().slice(0, 7);
+    if (currentMonth >= nowStr) return;
+    d.setMonth(d.getMonth() + 1);
+    currentMonth = d.toISOString().slice(0,7);
+    updateMonthLabel();
+    loadData(currentMonth);
 }
 
 // ── Init ───────────────────────────────────────────────
-// Sync trend label to the initially selected month
-(function(){
-    const [y, m] = currentMonth.split('-');
-    const label = new Date(y, m-1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-    const tag = document.getElementById('trend-month-tag');
-    if (tag) tag.textContent = label;
-})();
+updateMonthLabel();
 loadData();
 </script>
 
@@ -449,6 +470,22 @@ body {
   .metrics { grid-template-columns: repeat(2,1fr); }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
 }
+
+.month-nav {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 10px; padding: 6px 12px;
+}
+.month-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 18px; color: var(--honey); font-weight: 700;
+  padding: 0 4px; line-height: 1; transition: color 0.15s;
+}
+.month-btn:hover { color: var(--honey-dk); }
+.month-label {
+  font-size: 13px; font-weight: 600; color: var(--dark);
+  min-width: 100px; text-align: center;
+}
 </style>
 </head>
 <body>
@@ -493,23 +530,15 @@ body {
       <div class="page-title">Dashboard</div>
       <div class="page-sub">Welcome back, <strong>{{ username }}</strong> — here's your financial overview</div>
     </div>
-    <div class="month-select">
-      📅&nbsp;
-      <select id="month-picker" onchange="changeMonth(this.value)">
-        <option value="2026-05">May 2026</option>
-        <option value="2026-06" selected>June 2026</option>
-        <option value="2026-07">July 2026</option>
-        <option value="2026-08">August 2026</option>
-        <option value="2026-09">September 2026</option>
-        <option value="2026-10">October 2026</option>
-        <option value="2026-11">November 2026</option>
-        <option value="2026-12">December 2026</option>
-      </select>
+    <div class="month-nav">
+      <button class="month-btn" onclick="prevMonth()">‹</button>
+      <span class="month-label" id="month-label"></span>
+      <button class="month-btn" onclick="nextMonth()">›</button>
     </div>
   </div>
 
   <!-- ALERT -->
-  <div id="alert-banner" class="alert-banner ok"></div>
+  <div id="alert-banner" class="alert-banner" style="display:none"></div>
 
   <!-- METRICS -->
   <div class="metrics" id="metrics-grid"></div>

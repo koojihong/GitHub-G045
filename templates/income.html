@@ -299,6 +299,22 @@ tbody tr:hover { background: #fffaf0; }
 .breakdown-bar-bg { flex: 1; height: 8px; background: var(--comb); border-radius: 4px; overflow: hidden; }
 .breakdown-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
 .breakdown-val { font-size: 12px; font-weight: 600; color: var(--dark); width: 80px; text-align: right; flex-shrink: 0; }
+
+.month-nav {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 10px; padding: 6px 12px;
+}
+.month-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 18px; color: var(--honey); font-weight: 700;
+  padding: 0 4px; line-height: 1; transition: color 0.15s;
+}
+.month-btn:hover { color: var(--honey-dk); }
+.month-label {
+  font-size: 13px; font-weight: 600; color: var(--dark);
+  min-width: 100px; text-align: center;
+}
 </style>
 </head>
 <body>
@@ -343,9 +359,10 @@ tbody tr:hover { background: #fffaf0; }
       <div class="page-title">Income</div>
       <div class="page-sub">Track all your money sources — salary, part-time, allowance and more</div>
     </div>
-    <div class="month-select">
-      📅&nbsp;
-      <input type="month" id="month-picker"/>
+        <div class="month-nav">
+      <button class="month-btn" onclick="prevMonth()">‹</button>
+      <span class="month-label" id="month-label"></span>
+      <button class="month-btn" onclick="nextMonth()">›</button>
     </div>
   </div>
 
@@ -540,11 +557,40 @@ tbody tr:hover { background: #fffaf0; }
 
 <script>
 // ── Setup ─────────────────────────────────────────────
-const picker = document.getElementById('month-picker');
-const today  = new Date();
-picker.value = today.toISOString().slice(0,7);
-document.getElementById('date').value = today.toISOString().slice(0,10);
-picker.addEventListener('change', loadIncome);
+document.getElementById('date').value = new Date().toISOString().slice(0,10);
+
+// ── Month navigation ──────────────────────────────────
+let currentDate = new Date();
+currentDate.setDate(1);
+
+function updateMonthLabel() {
+  const label = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+  document.getElementById('month-label').textContent = label;
+}
+
+function prevMonth() {
+  currentDate.setMonth(currentDate.getMonth() - 1);
+  updateMonthLabel();
+  loadIncome();
+}
+
+function nextMonth() {
+  // Don't allow going to future months
+  const now = new Date();
+  now.setDate(1);
+  if (currentDate >= now) return;
+  currentDate.setMonth(currentDate.getMonth() + 1);
+  updateMonthLabel();
+  loadIncome();
+}
+
+function getCurrentMonthYear() {
+  return {
+    month: currentDate.getMonth() + 1,
+    year:  currentDate.getFullYear()
+  };
+}
+updateMonthLabel();
 
 // Sidebar avatar
 const uname = document.getElementById('sb-name').textContent.trim();
@@ -558,7 +604,7 @@ const typeColor = { Salary:'#2D8A5A', 'Part-time':'#3572B8', Allowance:'#C47B0E'
 
 // ── Load income ───────────────────────────────────────
 async function loadIncome() {
-  const [year, month] = picker.value.split('-');
+  const { month, year } = getCurrentMonthYear();
   const res  = await fetch(`/api/income?month=${month}&year=${year}`);
   const data = await res.json();
 

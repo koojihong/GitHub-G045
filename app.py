@@ -74,14 +74,17 @@ def get_expenses():
  
     expenses = query.order_by(Expense.date.desc()).all()
  
+    exp_list = [{
+        'id':          e.id,
+        'description': e.description,
+        'amount':      e.amount,
+        'category':    e.category,
+        'date':        e.date.strftime('%Y-%m-%d')
+    } for e in expenses]
+
     return jsonify({
-        'expenses': [{
-            'id':          e.id,
-            'description': e.description,
-            'amount':      e.amount,
-            'category':    e.category,
-            'date':        e.date.strftime('%Y-%m-%d')
-        } for e in expenses]
+        'expenses': exp_list,
+        'total':    sum(e.amount for e in expenses)
     })
  
 # ── Add New Expense ────────────────────────────────────
@@ -330,4 +333,3 @@ with app.app_context():
  
 if __name__ == '__main__':
     app.run(debug=True)
- 
