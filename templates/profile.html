@@ -249,10 +249,27 @@ body {
   <!-- PROFILE BANNER -->
   <div class="profile-banner">
     <div class="profile-avatar" id="avatar-initials">{{ username[0].upper() }}</div>
-    <div class="profile-info">
+    <div class="profile-info" style="flex:1">
       <div class="p-name" id="display-name">{{ username }}</div>
       <div class="p-email" id="display-email">{{ email }}</div>
-      <div class="member-badge">🐝 Budget Bee Member</div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <div class="member-badge">🐝 Budget Bee Member</div>
+        <div class="member-badge" style="background:#E8F5E9;color:#2D8A5A;border-color:rgba(45,138,90,0.2);">✅ Account Active</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;flex-shrink:0;">
+      <div style="text-align:center;background:var(--comb);border-radius:10px;padding:12px 16px;">
+        <div style="font-size:18px;font-weight:700;color:var(--honey);" id="stat-expenses">—</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;">Expenses</div>
+      </div>
+      <div style="text-align:center;background:var(--comb);border-radius:10px;padding:12px 16px;">
+        <div style="font-size:18px;font-weight:700;color:var(--green);" id="stat-savings">—</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;">Goals</div>
+      </div>
+      <div style="text-align:center;background:var(--comb);border-radius:10px;padding:12px 16px;">
+        <div style="font-size:18px;font-weight:700;color:var(--blue);" id="stat-income">—</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;">Income</div>
+      </div>
     </div>
   </div>
 
@@ -271,11 +288,14 @@ body {
           </div>
         </div>
         <div class="form-group">
-          <label>Email Address</label>
+          <label>Email Address <span style="font-size:10px;background:#f0f0f0;color:#9A8878;padding:2px 7px;border-radius:20px;margin-left:4px;text-transform:none;letter-spacing:0">🔒 Cannot be changed</span></label>
           <div class="field-wrap">
             <span class="field-icon">✉️</span>
-            <input type="email" name="email" id="email-input" value="{{ email }}" required>
+            <input type="email" id="email-input" value="{{ email }}"
+              readonly disabled
+              style="background:#f8f6f2;color:#9A8878;cursor:not-allowed;border-color:rgba(196,123,14,0.08);">
           </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">Your email is used for login and cannot be changed.</div>
         </div>
       </div>
       <button type="submit" class="btn-save">💾 Save Changes</button>
@@ -355,10 +375,32 @@ function checkStrength(pw) {
   label.style.color = score < 2 ? '#9A8878' : lvl.c;
 }
 
-const uname = document.getElementById('sb-name').textContent.trim();
-if (uname && uname !== '{{ username }}') {
-  document.getElementById('sb-avatar').textContent = uname.charAt(0).toUpperCase();
+// Load quick stats from API
+async function loadStats() {
+  try {
+    const [expRes, incRes, savRes] = await Promise.all([
+      fetch('/api/expenses'),
+      fetch('/api/income'),
+      fetch('/api/savings')
+    ]);
+    if (expRes.ok) {
+      const exp = await expRes.json();
+      document.getElementById('stat-expenses').textContent = exp.length || 0;
+    }
+    if (savRes.ok) {
+      const sav = await savRes.json();
+      document.getElementById('stat-savings').textContent = sav.length || 0;
+    }
+    if (incRes.ok) {
+      const inc = await incRes.json();
+      const total = inc.reduce((s, i) => s + i.amount, 0);
+      document.getElementById('stat-income').textContent = 'RM ' + total.toFixed(0);
+    }
+  } catch (e) {
+    // API not ready yet — leave as —
+  }
 }
+loadStats();
 </script>
 
 </body>
