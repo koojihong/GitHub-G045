@@ -13,13 +13,16 @@ const CAT_COLORS = {
 };
 
 let trendChart = null, ringChart = null, donutChart = null;
-let currentMonth = new Date().toISOString().slice(0,7); 
+let overallTrendChart = null, overallDonutChart = null, overallRingChart = null;
+let currentMonth = new Date().toISOString().slice(0,7); // e.g. "2026-06"
+let currentView = 'monthly';
+let overallLoaded = false;
 
 // ── helpers ──────────────────────────────────────────
 function rm(n){ return 'RM ' + (n||0).toFixed(2); }
 function fmtDate(d){ if(!d) return ''; const [y,m,day]=d.split('-'); return m+'/'+day+'/'+y; }
 
-// ── main loader ──────────────────────────────────────
+// ── main loader (MONTHLY) ────────────────────────────
 function loadData(monthStr) {
     if (monthStr) currentMonth = monthStr;
     const [year, month] = currentMonth.split('-');
@@ -28,17 +31,10 @@ function loadData(monthStr) {
         fetch(`/api/expenses?month=${month}&year=${year}`).then(r=>r.json()),
         fetch(`/api/income?month=${month}&year=${year}`).then(r=>r.json()),
         fetch('/api/savings').then(r=>r.json()),
-      ]).then(([expData, incData, savData]) => {
-        // FIX: /api/expenses returns {expenses:[...]}
-        const expList = expData.expenses || [];
-        // FIX: /api/income returns plain array
-        const incList = Array.isArray(incData) ? incData : [];
-        // FIX: /api/savings returns plain array
-        const savList = Array.isArray(savData) ? savData : [];
-
-        // Calculate totals from the lists
-        const spent   = expList.reduce((s, e) => s + e.amount, 0);
-        const income  = incList.reduce((s, i) => s + i.amount, 0);
+        // budget is embedded in template; read it once
+    ]).then(([expData, incData, savData]) => {
+        const spent   = expData.total   || 0;
+        const income  = incData.total   || 0;
         const balance = income - spent;
 
         // ── Metric cards ─────────────────────────────
@@ -61,7 +57,7 @@ function loadData(monthStr) {
             <div class="metric-card">
                 <div class="metric-icon" style="background:#F3E8FF">🎯</div>
                 <div class="metric-label">Savings Goals</div>
-                <div class="metric-value" style="color:var(--purple,#6B50C8)">${savList.length}</div>
+                <div class="metric-value" style="color:var(--purple,#6B50C8)">${savData.goals.length}</div>
             </div>
         `;
 
@@ -71,16 +67,13 @@ function loadData(monthStr) {
         renderBudgetRing(spent, budgetVal);
 
         // ── Spending trend chart ──────────────────────
-        renderTrendChart(expList);
+        renderTrendChart(expData.expenses || []);
 
         // ── Category donut ────────────────────────────
-        renderDonut(expList, spent);
-
-        // ── Savings goals ─────────────────────────────
-        renderSavings(savList);
+        renderDonut(expData.expenses || [], spent);
 
         // ── Recent transactions ───────────────────────
-        renderTransactions(expList);
+        renderTransactions(expData.expenses || []);
     }).catch(err => console.error('Dashboard load error:', err));
 }
 
@@ -174,29 +167,6 @@ function renderDonut(expenses, total) {
     `).join('');
 }
 
-// ── Savings goals ──────────────────────────────────────
-function renderSavings(goals) {
-    document.getElementById('sav-panel-tag').textContent = goals.length + ' goal' + (goals.length!==1?'s':'');
-    if (!goals.length) {
-        document.getElementById('savings-goals').innerHTML = "<p style='color:var(--muted);font-size:13px'>No savings goals yet</p>";
-        return;
-    }
-    document.getElementById('savings-goals').innerHTML = goals.slice(0,3).map(g => {
-        const pct = g.target_amount > 0 ? Math.min((g.saved_amount / g.target_amount) * 100, 100) : 0;
-        return `
-        <div class="goal-item">
-            <div class="goal-row">
-                <span class="goal-name">${g.name}</span>
-                <span class="goal-pct">${pct.toFixed(0)}%</span>
-            </div>
-            <div class="goal-row">
-                <span class="goal-meta">${rm(g.saved_amount)} / ${rm(g.target_amount)}</span>
-            </div>
-            <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:var(--honey)"></div></div>
-        </div>`;
-    }).join('');
-}
-
 // ── Recent transactions ────────────────────────────────
 function renderTransactions(expenses) {
     const recent = expenses.slice(0, 5);
@@ -215,37 +185,214 @@ function renderTransactions(expenses) {
         : "<p style='color:var(--muted);font-size:13px'>No transactions yet</p>";
 }
 
-// ── Month navigation ──────────────────────────────────
-function updateMonthLabel() {
-    const [y, m] = currentMonth.split('-');
+// ── Month picker ───────────────────────────────────────
+function changeMonth(val) {
+    currentMonth = val;
+    // Update the trend chart panel label to match
+    const [y, m] = val.split('-');
     const label = new Date(y, m-1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-    document.getElementById('month-label').textContent = label;
     const tag = document.getElementById('trend-month-tag');
     if (tag) tag.textContent = label;
+    loadData(val);
 }
 
-function prevMonth() {
-    const [y, m] = currentMonth.split('-');
-    const d = new Date(y, m-1, 1);
-    d.setMonth(d.getMonth() - 1);
-    currentMonth = d.toISOString().slice(0,7);
-    updateMonthLabel();
-    loadData(currentMonth);
+// ── Tab switching ────────────────────────────────────
+function switchView(view) {
+    currentView = view;
+    document.getElementById('tab-btn-monthly').classList.toggle('active', view === 'monthly');
+    document.getElementById('tab-btn-overall').classList.toggle('active', view === 'overall');
+    document.getElementById('view-monthly').style.display = view === 'monthly' ? '' : 'none';
+    document.getElementById('view-overall').style.display  = view === 'overall' ? '' : 'none';
+    document.getElementById('month-select-wrap').style.display = view === 'monthly' ? '' : 'none';
+
+    if (view === 'overall' && !overallLoaded) {
+        loadOverallData();
+    }
 }
 
-function nextMonth() {
-    const [y, m] = currentMonth.split('-');
-    const d = new Date(y, m-1, 1);
-    const nowStr = new Date().toISOString().slice(0, 7);
-    if (currentMonth >= nowStr) return;
-    d.setMonth(d.getMonth() + 1);
-    currentMonth = d.toISOString().slice(0,7);
-    updateMonthLabel();
-    loadData(currentMonth);
+// ── OVERALL loader ────────────────────────────────────
+function loadOverallData() {
+    const months = Array.from(document.querySelectorAll('#month-picker option')).map(o => o.value);
+
+    Promise.all(
+        months.map(m => {
+            const [y, mo] = m.split('-');
+            return Promise.all([
+                fetch(`/api/expenses?month=${mo}&year=${y}`).then(r => r.json()),
+                fetch(`/api/income?month=${mo}&year=${y}`).then(r => r.json())
+            ]);
+        })
+    ).then(results => {
+        let allExpenses = [];
+        let totalIncome = 0, totalSpent = 0;
+        const monthlySpend = {};
+
+        results.forEach(([expData, incData], i) => {
+            const m = months[i];
+            const spent  = expData.total  || 0;
+            const income = incData.total  || 0;
+            totalSpent  += spent;
+            totalIncome += income;
+            monthlySpend[m] = spent;
+            allExpenses = allExpenses.concat(expData.expenses || []);
+        });
+
+        fetch('/api/savings').then(r => r.json()).then(savData => {
+            const goals = savData.goals || [];
+            const totalSaved  = goals.reduce((s,g) => s + (g.saved  || 0), 0);
+            const totalTarget = goals.reduce((s,g) => s + (g.target || 0), 0);
+
+            renderOverallMetrics(totalIncome, totalSpent, totalSaved, goals.length);
+            renderOverallRing(totalSaved, totalTarget);
+            renderSavingsOverview(goals);
+        });
+
+        renderOverallTrend(monthlySpend);
+        renderOverallDonut(allExpenses, totalSpent);
+        overallLoaded = true;
+    }).catch(err => console.error('Overall dashboard load error:', err));
+}
+
+// ── Overall metric cards ──────────────────────────────
+function renderOverallMetrics(totalIncome, totalSpent, totalSaved, goalCount) {
+    const balance = totalIncome - totalSpent;
+    document.getElementById('overall-metrics-grid').innerHTML = `
+        <div class="metric-card">
+            <div class="metric-icon" style="background:#EDFDF5">💰</div>
+            <div class="metric-label">Total Income</div>
+            <div class="metric-value green">${rm(totalIncome)}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon" style="background:#FDEEEE">💸</div>
+            <div class="metric-label">Total Spent</div>
+            <div class="metric-value red">${rm(totalSpent)}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon" style="background:#FFF4E0">⚖️</div>
+            <div class="metric-label">Net Balance</div>
+            <div class="metric-value honey">${rm(balance)}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon" style="background:#F3E8FF">🎯</div>
+            <div class="metric-label">Total Saved</div>
+            <div class="metric-value" style="color:var(--purple,#6B50C8)">${rm(totalSaved)}</div>
+        </div>
+    `;
+}
+
+// ── Overall trend (spend per month) ───────────────────
+function renderOverallTrend(monthlySpend) {
+    const labels = Object.keys(monthlySpend).sort();
+    const values = labels.map(m => monthlySpend[m]);
+    const niceLabels = labels.map(m => {
+        const [y, mo] = m.split('-');
+        return new Date(y, mo-1, 1).toLocaleString('default', { month: 'short' });
+    });
+
+    const ctx = document.getElementById('overallTrendChart').getContext('2d');
+    if (overallTrendChart) overallTrendChart.destroy();
+    overallTrendChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: niceLabels,
+            datasets: [{
+                label: 'Monthly Spend',
+                data: values,
+                backgroundColor: 'rgba(196,123,14,0.55)',
+                borderRadius: 6,
+                maxBarThickness: 36
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display:false } },
+            scales: {
+                x: { grid: { display:false }, ticks: { font:{ size:11 } } },
+                y: { grid: { color:'rgba(0,0,0,0.04)' }, ticks: { font:{ size:11 }, callback: v => 'RM'+v } }
+            }
+        }
+    });
+}
+
+// ── Overall category donut ────────────────────────────
+function renderOverallDonut(expenses, total) {
+    const cats = {};
+    expenses.forEach(e => { cats[e.category] = (cats[e.category]||0) + e.amount; });
+    const labels = Object.keys(cats);
+    const values = labels.map(k => cats[k]);
+    const colors = labels.map(k => CAT_COLORS[k] || '#9A8878');
+
+    document.getElementById('overall-cat-total-tag').textContent = rm(total);
+
+    const ctx = document.getElementById('overallDonutChart').getContext('2d');
+    if (overallDonutChart) overallDonutChart.destroy();
+    if (labels.length === 0) {
+        document.getElementById('overall-cat-list').innerHTML = "<p style='color:var(--muted);font-size:13px'>No expenses recorded</p>";
+        return;
+    }
+    overallDonutChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0 }] },
+        options: { cutout:'65%', plugins:{ legend:{display:false} }, animation:{duration:700} }
+    });
+
+    document.getElementById('overall-cat-list').innerHTML = labels.map((k,i) => `
+        <div class="cat-item">
+            <div class="cat-dot" style="background:${colors[i]}"></div>
+            <div class="cat-name">${k}</div>
+            <div class="cat-amt">${rm(values[i])}</div>
+            <div class="cat-pct">${total>0?(values[i]/total*100).toFixed(0):'0'}%</div>
+        </div>
+    `).join('');
+}
+
+// ── Overall savings progress ring ─────────────────────
+function renderOverallRing(saved, target) {
+    const pct = target > 0 ? Math.min((saved/target)*100, 100) : 0;
+    document.getElementById('ov-ring-pct').textContent = pct.toFixed(0) + '%';
+    document.getElementById('ov-saved').textContent = rm(saved);
+    document.getElementById('ov-target').textContent = target > 0 ? rm(target) : '—';
+    document.getElementById('ov-left').textContent = target > 0 ? rm(Math.max(target-saved,0)) : '—';
+
+    const color = '#6B50C8';
+    const ctx = document.getElementById('overallRingChart').getContext('2d');
+    if (overallRingChart) overallRingChart.destroy();
+    overallRingChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: { datasets: [{ data: [pct, 100-pct], backgroundColor: [color, '#FDF3DC'], borderWidth: 0 }] },
+        options: { cutout: '75%', plugins: { legend: { display:false }, tooltip: { enabled:false } }, animation: { duration: 700 } }
+    });
+}
+
+// ── Savings goals overview (full list) ────────────────
+function renderSavingsOverview(goals) {
+    document.getElementById('overall-sav-tag').textContent = goals.length + ' goal' + (goals.length!==1?'s':'');
+    if (!goals.length) {
+        document.getElementById('overall-savings-goals').innerHTML = "<p style='color:var(--muted);font-size:13px'>No savings goals yet</p>";
+        return;
+    }
+    document.getElementById('overall-savings-goals').innerHTML = goals.map(g => `
+        <div class="goal-item">
+            <div class="goal-row">
+                <span class="goal-name">${g.goal_name}</span>
+                <span class="goal-pct">${g.progress_pct}%</span>
+            </div>
+            <div class="goal-row">
+                <span class="goal-meta">${rm(g.saved)} / ${rm(g.target)}</span>
+            </div>
+            <div class="prog-bar"><div class="prog-fill" style="width:${g.progress_pct}%;background:var(--honey)"></div></div>
+        </div>
+    `).join('');
 }
 
 // ── Init ───────────────────────────────────────────────
-updateMonthLabel();
+// Sync trend label to the initially selected month
+(function(){
+    const [y, m] = currentMonth.split('-');
+    const label = new Date(y, m-1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+    const tag = document.getElementById('trend-month-tag');
+    if (tag) tag.textContent = label;
+})();
 loadData();
 </script>
 
@@ -339,7 +486,7 @@ body {
 /* ── TOPBAR ──────────────────────────────── */
 .topbar {
   display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 28px;
+  margin-bottom: 18px;
 }
 .page-title { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--dark); }
 .page-sub   { font-size: 13px; color: var(--muted); margin-top: 2px; }
@@ -351,17 +498,22 @@ body {
 }
 .month-select select { border: none; outline: none; font-family: 'DM Sans',sans-serif; font-size: 13px; background: transparent; cursor: pointer; color: var(--dark); }
 
-/* ── ALERT BANNER ────────────────────────── */
-.alert-banner {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 18px; border-radius: var(--radius); margin-bottom: 24px;
-  font-size: 13px; font-weight: 500;
-  animation: slideDown 0.4s ease;
+/* ── TABS ────────────────────────────────── */
+.tab-nav {
+  display: flex; gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
 }
-.alert-banner.ok   { background: #EDFDF5; color: #0A5232; border: 1px solid #A3E8C4; }
-.alert-banner.warn { background: #FFF4E0; color: #7A4D08; border: 1px solid #F5D48A; }
-.alert-banner.over { background: #FDEEEE; color: #7F1D1D; border: 1px solid #FCA5A5; }
-@keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+.tab-btn {
+  font-family: 'DM Sans', sans-serif;
+  background: none; border: none; cursor: pointer;
+  padding: 10px 22px; font-size: 13px; font-weight: 600;
+  color: var(--muted);
+  border-bottom: 3px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab-btn:hover { color: var(--dark); }
+.tab-btn.active { color: var(--honey-dk); border-bottom-color: var(--honey); }
 
 /* ── METRIC CARDS ────────────────────────── */
 .metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
@@ -424,6 +576,7 @@ body {
 .prog-fill { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(.4,0,.2,1); }
 
 /* ── SAVINGS GOALS ───────────────────────── */
+.goal-list-scroll { max-height: 220px; overflow-y: auto; padding-right: 4px; }
 .goal-item { margin-bottom: 16px; }
 .goal-item:last-child { margin-bottom: 0; }
 .goal-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
@@ -470,22 +623,6 @@ body {
   .metrics { grid-template-columns: repeat(2,1fr); }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
 }
-
-.month-nav {
-  display: flex; align-items: center; gap: 8px;
-  background: var(--white); border: 1px solid var(--border);
-  border-radius: 10px; padding: 6px 12px;
-}
-.month-btn {
-  background: none; border: none; cursor: pointer;
-  font-size: 18px; color: var(--honey); font-weight: 700;
-  padding: 0 4px; line-height: 1; transition: color 0.15s;
-}
-.month-btn:hover { color: var(--honey-dk); }
-.month-label {
-  font-size: 13px; font-weight: 600; color: var(--dark);
-  min-width: 100px; text-align: center;
-}
 </style>
 </head>
 <body>
@@ -530,69 +667,74 @@ body {
       <div class="page-title">Dashboard</div>
       <div class="page-sub">Welcome back, <strong>{{ username }}</strong> — here's your financial overview</div>
     </div>
-    <div class="month-nav">
-      <button class="month-btn" onclick="prevMonth()">‹</button>
-      <span class="month-label" id="month-label"></span>
-      <button class="month-btn" onclick="nextMonth()">›</button>
+    <div class="month-select" id="month-select-wrap">
+      📅&nbsp;
+      <select id="month-picker" onchange="changeMonth(this.value)">
+        <option value="2026-05">May 2026</option>
+        <option value="2026-06" selected>June 2026</option>
+        <option value="2026-07">July 2026</option>
+        <option value="2026-08">August 2026</option>
+        <option value="2026-09">September 2026</option>
+        <option value="2026-10">October 2026</option>
+        <option value="2026-11">November 2026</option>
+        <option value="2026-12">December 2026</option>
+      </select>
     </div>
   </div>
 
-  <!-- ALERT -->
-  <div id="alert-banner" class="alert-banner" style="display:none"></div>
+  <!-- TABS -->
+  <div class="tab-nav">
+    <button class="tab-btn active" id="tab-btn-monthly" onclick="switchView('monthly')">Monthly</button>
+    <button class="tab-btn" id="tab-btn-overall" onclick="switchView('overall')">Overall</button>
+  </div>
 
-  <!-- METRICS -->
-  <div class="metrics" id="metrics-grid"></div>
+  <!-- ════════════════ MONTHLY VIEW ════════════════ -->
+  <div id="view-monthly">
 
-  <!-- ROW 1: spending chart + budget ring -->
-  <div class="grid-3">
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">Monthly Spending Trend</div>
-        <span class="panel-tag" id="trend-month-tag">May 2026</span>
+    <!-- METRICS -->
+    <div class="metrics" id="metrics-grid"></div>
+
+    <!-- ROW 1: spending chart + budget ring -->
+    <div class="grid-3">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Monthly Spending Trend</div>
+          <span class="panel-tag" id="trend-month-tag">May 2026</span>
+        </div>
+        <div class="chart-wrap-tall"><canvas id="trendChart"></canvas></div>
       </div>
-      <div class="chart-wrap-tall"><canvas id="trendChart"></canvas></div>
-    </div>
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">Budget Usage</div>
-      </div>
-      <div class="budget-meter">
-        <div class="budget-ring">
-          <canvas id="ringChart" width="160" height="160"></canvas>
-          <div class="budget-center">
-            <div class="budget-pct-num" id="ring-pct">0%</div>
-            <div class="budget-pct-lbl">used</div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Budget Usage</div>
+        </div>
+        <div class="budget-meter">
+          <div class="budget-ring">
+            <canvas id="ringChart" width="160" height="160"></canvas>
+            <div class="budget-center">
+              <div class="budget-pct-num" id="ring-pct">0%</div>
+              <div class="budget-pct-lbl">used</div>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="budget-stats">
-        <div><div class="bstat-label">Spent</div><div class="bstat-value" id="b-spent" style="color:var(--red)">—</div></div>
-        <div style="text-align:center"><div class="bstat-label">Limit</div><div class="bstat-value" id="b-limit" data-budget="{{ budget or 0 }}" style="color:var(--honey)">—</div></div>
-        <div style="text-align:right"><div class="bstat-label">Left</div><div class="bstat-value" id="b-left" style="color:var(--green)">—</div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ROW 2: categories + savings + transactions -->
-  <div class="grid-2">
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">Spending by Category</div>
-        <span class="panel-tag" id="cat-total-tag">—</span>
-      </div>
-      <div style="display:flex;gap:20px;align-items:center">
-        <div style="flex-shrink:0"><canvas id="donutChart" width="140" height="140"></canvas></div>
-        <div class="cat-list" id="cat-list" style="flex:1"></div>
-      </div>
-    </div>
-
-    <div>
-      <div class="panel" style="margin-bottom:20px">
-        <div class="panel-header">
-          <div class="panel-title">Savings Goals</div>
-          <span class="panel-tag" id="sav-panel-tag">—</span>
+        <div class="budget-stats">
+          <div><div class="bstat-label">Spent</div><div class="bstat-value" id="b-spent" style="color:var(--red)">—</div></div>
+          <div style="text-align:center"><div class="bstat-label">Limit</div><div class="bstat-value" id="b-limit" data-budget="{{ budget or 0 }}" style="color:var(--honey)">—</div></div>
+          <div style="text-align:right"><div class="bstat-label">Left</div><div class="bstat-value" id="b-left" style="color:var(--green)">—</div></div>
         </div>
-        <div id="savings-goals"></div>
+      </div>
+    </div>
+
+    <!-- ROW 2: categories + recent transactions -->
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Spending by Category</div>
+          <span class="panel-tag" id="cat-total-tag">—</span>
+        </div>
+        <div style="display:flex;gap:20px;align-items:center">
+          <div style="flex-shrink:0"><canvas id="donutChart" width="140" height="140"></canvas></div>
+          <div class="cat-list" id="cat-list" style="flex:1"></div>
+        </div>
       </div>
 
       <div class="panel">
@@ -603,6 +745,69 @@ body {
         <div class="tx-list" id="tx-list"></div>
       </div>
     </div>
-  </div>
 
-</div><!-- /main -->\
+  </div><!-- /view-monthly -->
+
+  <!-- ════════════════ OVERALL VIEW ════════════════ -->
+  <div id="view-overall" style="display:none">
+
+    <!-- METRICS -->
+    <div class="metrics" id="overall-metrics-grid"></div>
+
+    <!-- ROW 1: monthly spend trend + savings progress -->
+    <div class="grid-3">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Spending by Month</div>
+          <span class="panel-tag">All months</span>
+        </div>
+        <div class="chart-wrap-tall"><canvas id="overallTrendChart"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Savings Progress</div>
+        </div>
+        <div class="budget-meter">
+          <div class="budget-ring">
+            <canvas id="overallRingChart" width="160" height="160"></canvas>
+            <div class="budget-center">
+              <div class="budget-pct-num" id="ov-ring-pct">0%</div>
+              <div class="budget-pct-lbl">saved</div>
+            </div>
+          </div>
+        </div>
+        <div class="budget-stats">
+          <div><div class="bstat-label">Saved</div><div class="bstat-value" id="ov-saved" style="color:var(--purple)">—</div></div>
+          <div style="text-align:center"><div class="bstat-label">Target</div><div class="bstat-value" id="ov-target" style="color:var(--honey)">—</div></div>
+          <div style="text-align:right"><div class="bstat-label">Left</div><div class="bstat-value" id="ov-left" style="color:var(--green)">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 2: overall categories + savings goals overview -->
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Spending by Category</div>
+          <span class="panel-tag" id="overall-cat-total-tag">—</span>
+        </div>
+        <div style="display:flex;gap:20px;align-items:center">
+          <div style="flex-shrink:0"><canvas id="overallDonutChart" width="140" height="140"></canvas></div>
+          <div class="cat-list" id="overall-cat-list" style="flex:1"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Savings Goals</div>
+          <span class="panel-tag" id="overall-sav-tag">—</span>
+        </div>
+        <div class="goal-list-scroll" id="overall-savings-goals"></div>
+      </div>
+    </div>
+
+  </div><!-- /view-overall -->
+
+</div><!-- /main -->
+</body>
+</html>
