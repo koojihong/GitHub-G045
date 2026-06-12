@@ -379,22 +379,21 @@ function checkStrength(pw) {
 async function loadStats() {
   try {
     const [expRes, incRes, savRes] = await Promise.all([
-      fetch('/api/expenses'),
-      fetch('/api/income'),
-      fetch('/api/savings')
+      fetch('/api/expenses', {credentials:'same-origin'}),
+      fetch('/api/income',   {credentials:'same-origin'}),
+      fetch('/api/savings',  {credentials:'same-origin'})
     ]);
     if (expRes.ok) {
       const exp = await expRes.json();
-      document.getElementById('stat-expenses').textContent = exp.length || 0;
+      document.getElementById('stat-expenses').textContent = (exp.expenses || []).length;
     }
     if (savRes.ok) {
       const sav = await savRes.json();
-      document.getElementById('stat-savings').textContent = sav.length || 0;
+      document.getElementById('stat-savings').textContent = (sav.goals || []).length;
     }
     if (incRes.ok) {
       const inc = await incRes.json();
-      const total = inc.reduce((s, i) => s + i.amount, 0);
-      document.getElementById('stat-income').textContent = 'RM ' + total.toFixed(0);
+      document.getElementById('stat-income').textContent = 'RM ' + (inc.total || 0).toFixed(0);
     }
   } catch (e) {
     // API not ready yet — leave as —
