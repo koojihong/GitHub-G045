@@ -419,25 +419,26 @@ loadData();
   --shadow:   0 2px 16px rgba(100,60,0,0.08);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
+html, body { height: 100%; overflow: hidden; }
 body {
   font-family: 'DM Sans', sans-serif;
   background: var(--light);
   color: var(--dark);
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
 }
 
 /* ── SIDEBAR ─────────────────────────────── */
 .sidebar {
   width: 220px;
-  min-height: 100vh;
+  height: 100vh;
   background: var(--dark2);
   display: flex;
   flex-direction: column;
   padding: 28px 0 24px;
   position: fixed;
   top: 0; left: 0; bottom: 0;
+  overflow-y: auto;
 }
 .logo {
   display: flex;
@@ -479,9 +480,27 @@ body {
 .main {
   margin-left: 220px;
   flex: 1;
-  padding: 32px;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 32px 32px 0 32px;
 }
+
+.main-header {
+  flex-shrink: 0;
+}
+
+.main-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 32px;
+  padding-right: 4px;
+}
+
+.main-body::-webkit-scrollbar { width: 5px; }
+.main-body::-webkit-scrollbar-track { background: transparent; }
+.main-body::-webkit-scrollbar-thumb { background: var(--honey-lt); border-radius: 3px; }
 
 /* ── TOPBAR ──────────────────────────────── */
 .topbar {
@@ -564,7 +583,7 @@ body {
 .chart-wrap-tall { position: relative; height: 220px; }
 
 /* ── CATEGORY LIST ───────────────────────── */
-.cat-list { display: flex; flex-direction: column; gap: 10px; }
+.cat-list { display: flex; flex-direction: column; gap: 10px; max-height: 160px; overflow-y: auto; padding-right: 4px; }
 .cat-item { display: flex; align-items: center; gap: 10px; }
 .cat-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .cat-name { font-size: 13px; color: var(--dark); flex: 1; }
@@ -585,7 +604,7 @@ body {
 .goal-pct  { font-size: 13px; font-weight: 600; color: var(--honey); }
 
 /* ── TRANSACTIONS ────────────────────────── */
-.tx-list { display: flex; flex-direction: column; gap: 1px; }
+.tx-list { display: flex; flex-direction: column; gap: 1px; max-height: 220px; overflow-y: auto; padding-right: 4px; }
 .tx-row {
   display: flex; align-items: center; gap: 12px;
   padding: 10px 0; border-bottom: 1px solid rgba(196,123,14,0.07);
@@ -623,6 +642,18 @@ body {
   .metrics { grid-template-columns: repeat(2,1fr); }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
 }
+
+/* ── PANEL SCROLLBARS ────────────────────── */
+.cat-list::-webkit-scrollbar,
+.tx-list::-webkit-scrollbar,
+.goal-list-scroll::-webkit-scrollbar { width: 4px; }
+.cat-list::-webkit-scrollbar-track,
+.tx-list::-webkit-scrollbar-track,
+.goal-list-scroll::-webkit-scrollbar-track { background: var(--comb); border-radius: 2px; }
+.cat-list::-webkit-scrollbar-thumb,
+.tx-list::-webkit-scrollbar-thumb,
+.goal-list-scroll::-webkit-scrollbar-thumb { background: var(--honey-lt); border-radius: 2px; }
+
 </style>
 </head>
 <body>
@@ -660,7 +691,7 @@ body {
 
 <!-- MAIN -->
 <div class="main">
-
+<div class="main-header">
   <!-- TOPBAR -->
   <div class="topbar">
     <div>
@@ -687,7 +718,9 @@ body {
     <button class="tab-btn active" id="tab-btn-monthly" onclick="switchView('monthly')">Monthly</button>
     <button class="tab-btn" id="tab-btn-overall" onclick="switchView('overall')">Overall</button>
   </div>
+</div><!-- /main-header -->
 
+<div class="main-body">
   <!-- ════════════════ MONTHLY VIEW ════════════════ -->
   <div id="view-monthly">
 
@@ -808,6 +841,7 @@ body {
 
   </div><!-- /view-overall -->
 
+</div><!-- /main-body -->
 </div><!-- /main -->
 </body>
 </html>
