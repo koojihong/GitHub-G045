@@ -169,6 +169,22 @@ def delete_expense(expense_id):
     db.session.commit()
     return jsonify({'deleted': expense_id})
 
+# ── Edit Expense ───────────────────────────────────────
+@app.route('/api/expenses/edit/<int:expense_id>', methods=['PUT'])
+@login_required
+def edit_expense(expense_id):
+    expense = Expense.query.filter_by(id=expense_id, user_id=session['user_id']).first()
+    if not expense:
+        return jsonify({'error': 'Not found'}), 404
+
+    data = request.get_json()
+    expense.description = data.get('description', expense.description)
+    expense.amount      = float(data.get('amount', expense.amount))
+    expense.category    = data.get('category', expense.category)
+    expense.date        = datetime.strptime(data['date'], '%Y-%m-%d')
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
 # ── Update Income & Budget ─────────────────────────────
 @app.route('/api/update-settings', methods=['POST'])
 @login_required
@@ -274,6 +290,22 @@ def delete_income(income_id):
     db.session.delete(income)
     db.session.commit()
     return jsonify({'deleted': income_id})
+
+# ── Edit Income ────────────────────────────────────────
+@app.route('/api/income/edit/<int:income_id>', methods=['PUT'])
+@login_required
+def edit_income(income_id):
+    income = Income.query.filter_by(id=income_id, user_id=session['user_id']).first()
+    if not income:
+        return jsonify({'error': 'Not found'}), 404
+
+    data = request.get_json()
+    income.description = data.get('description', income.description)
+    income.amount      = float(data.get('amount', income.amount))
+    income.income_type = data.get('income_type', income.income_type)
+    income.date        = datetime.strptime(data['date'], '%Y-%m-%d')
+    db.session.commit()
+    return jsonify({'status': 'ok'})
 
 # ── Profile Page ──────────────────────────────────────
 @app.route('/profile')

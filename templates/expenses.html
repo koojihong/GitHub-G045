@@ -213,13 +213,48 @@ tbody tr:hover { background: #fffaf0; }
 .cat-Transport { background: #dbeafe; color: #1e40af; }
 .cat-Other     { background: #f1f5f9; color: #475569; }
 
-/* ── DELETE BUTTON ───────────────────────── */
-.btn-del {
+/* ── ACTION BUTTONS ──────────────────────── */
+.btn-del, .btn-edit {
   background: none; border: none; cursor: pointer;
-  color: var(--border); font-size: 15px; padding: 4px 6px;
+  font-size: 15px; padding: 4px 6px;
   border-radius: 6px; transition: all 0.15s;
 }
-.btn-del:hover { color: var(--red); background: #fff0f0; }
+.btn-del  { color: var(--border); }
+.btn-edit { color: var(--border); }
+.btn-del:hover  { color: var(--red);   background: #fff0f0; }
+.btn-edit:hover { color: var(--honey); background: var(--comb); }
+
+/* ── EDIT MODAL ──────────────────────────── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.35); z-index: 100;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--white); border-radius: var(--radius);
+  padding: 28px; width: 440px; max-width: 95vw;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  animation: fadeUp 0.2s ease;
+}
+.modal-title { font-size: 16px; font-weight: 600; margin-bottom: 20px; color: var(--dark); }
+.modal-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+.modal-grid .full { grid-column: 1 / -1; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.btn-cancel {
+  padding: 9px 18px; background: none;
+  border: 1px solid var(--border); border-radius: 10px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px;
+  cursor: pointer; color: var(--muted); transition: all 0.15s;
+}
+.btn-cancel:hover { background: var(--comb); color: var(--dark); }
+.btn-save {
+  padding: 9px 22px; background: var(--honey); color: #fff;
+  border: none; border-radius: 10px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.btn-save:hover { background: var(--honey-dk); }
 
 /* ── EMPTY STATE ─────────────────────────── */
 .empty {
@@ -380,6 +415,42 @@ tbody tr:hover { background: #fffaf0; }
 
 </div><!-- /main -->
 
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-title">✏️ Edit Expense</div>
+    <div class="modal-grid">
+      <div class="form-group full">
+        <label>Description</label>
+        <input type="text" id="edit-desc" placeholder="e.g. Lunch at mamak"/>
+      </div>
+      <div class="form-group">
+        <label>Amount (RM)</label>
+        <input type="number" id="edit-amount" placeholder="0.00" min="0" step="0.01"/>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="edit-category">
+          <option value="Bills">💡 Bills</option>
+          <option value="Food">🍜 Food</option>
+          <option value="Health">💊 Health</option>
+          <option value="Shopping">🛍️ Shopping</option>
+          <option value="Transport">🚗 Transport</option>
+          <option value="Other">📦 Other</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Date</label>
+        <input type="date" id="edit-date"/>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save"   onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── Setup defaults ──────────────────────────────────
 const picker = document.getElementById('month-picker');
@@ -435,7 +506,10 @@ async function loadExpenses() {
       </td>
       <td><span class="badge ${catClass[e.category] || 'cat-Other'}">${e.category}</span></td>
       <td style="font-weight:600;color:var(--red)">RM ${e.amount.toFixed(2)}</td>
-      <td><button class="btn-del" onclick="deleteExpense(${e.id})" title="Delete">🗑</button></td>
+      <td style="display:flex;gap:4px">
+        <button class="btn-edit" onclick="openEdit(${e.id},'${e.description.replace(/'/g,"\\'")}',${e.amount},'${e.category}','${e.date}')" title="Edit">✏️</button>
+        <button class="btn-del"  onclick="deleteExpense(${e.id})" title="Delete">🗑</button>
+      </td>
     </tr>
   `).join('');
 
@@ -496,6 +570,50 @@ function showAlert(msg, type) {
   banner.className = 'alert-banner ' + type;
   setTimeout(() => banner.className = 'alert-banner', 3000);
 }
+
+// ── Edit modal ───────────────────────────────────────
+let editingId = null;
+
+function openEdit(id, desc, amount, category, date) {
+  editingId = id;
+  document.getElementById('edit-desc').value     = desc;
+  document.getElementById('edit-amount').value   = amount;
+  document.getElementById('edit-category').value = category;
+  document.getElementById('edit-date').value     = date;
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  editingId = null;
+}
+
+async function saveEdit() {
+  const desc     = document.getElementById('edit-desc').value.trim();
+  const amount   = document.getElementById('edit-amount').value;
+  const category = document.getElementById('edit-category').value;
+  const date     = document.getElementById('edit-date').value;
+
+  if (!desc || !amount || !date) { showAlert('Please fill in all fields!', 'warn'); return; }
+
+  const res = await fetch(`/api/expenses/edit/${editingId}`, {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ description: desc, amount, category, date })
+  });
+
+  if (res.ok) {
+    closeModal();
+    showAlert('Expense updated!', 'ok');
+    loadExpenses();
+  }
+}
+
+// Close modal on overlay click
+document.getElementById('edit-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
 
 // ── Init ─────────────────────────────────────────────
 loadExpenses();
