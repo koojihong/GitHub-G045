@@ -559,7 +559,7 @@ const typeColor = { Salary:'#2D8A5A', 'Part-time':'#3572B8', Allowance:'#C47B0E'
 // ── Load income ───────────────────────────────────────
 async function loadIncome() {
   const [year, month] = picker.value.split('-');
-  const res  = await fetch(`/api/income?month=${month}&year=${year}`);
+  const res  = await fetch(`/api/income?month=${month}&year=${year}`, {credentials:'same-origin'});
   const data = await res.json();
 
   if (data.error) {
@@ -693,6 +693,7 @@ async function addIncome() {
 
   const res = await fetch('/api/income/add', {
     method:  'POST',
+    credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({ description: desc, amount: parseFloat(amount), income_type: type, date })
   });
@@ -710,7 +711,7 @@ async function addIncome() {
 // ── Delete income ─────────────────────────────────────
 async function deleteIncome(id) {
   if (!confirm('Delete this income record?')) return;
-  await fetch(`/api/income/delete/${id}`, { method: 'DELETE' });
+  await fetch(`/api/income/delete/${id}`, { method: 'DELETE', credentials: 'same-origin' });
   showAlert('Record deleted.', 'ok');
   loadIncome();
 }
