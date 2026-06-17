@@ -14,7 +14,9 @@ const CAT_COLORS = {
 
 let trendChart = null, ringChart = null, donutChart = null;
 let overallTrendChart = null, overallDonutChart = null, overallRingChart = null;
-let currentMonth = new Date().toISOString().slice(0,7); // e.g. "2026-06"
+// Build YYYY-MM from LOCAL date parts to avoid UTC timezone shift
+const _now0 = new Date();
+let currentMonth = _now0.getFullYear() + '-' + String(_now0.getMonth() + 1).padStart(2, '0');
 let currentView = 'monthly';
 let overallLoaded = false;
 
@@ -212,12 +214,12 @@ function switchView(view) {
 
 // ── OVERALL loader ────────────────────────────────────
 function loadOverallData() {
-    // Build the same month range as the picker (12 months back up to current month)
+    // Build month range from April of current year up to current month
     const now    = new Date();
     const months = [];
-    for (let delta = -12; delta <= 0; delta++) {
+    for (let delta = -(now.getMonth() - 3); delta <= 0; delta++) {
         const d = new Date(now.getFullYear(), now.getMonth() + delta, 1);
-        months.push(d.toISOString().slice(0, 7));
+        months.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
     }
 
     Promise.all(
@@ -397,10 +399,10 @@ function renderSavingsOverview(goals) {
 document.addEventListener('DOMContentLoaded', function () {
     const picker = document.getElementById('month-picker');
     const now    = new Date();
-    // Generate from 12 months ago up to 6 months ahead
-    for (let delta = -12; delta <= 6; delta++) {
+    // Generate from April of current year up to 6 months ahead
+    for (let delta = -(now.getMonth() - 3); delta <= 6; delta++) {
         const d   = new Date(now.getFullYear(), now.getMonth() + delta, 1);
-        const val = d.toISOString().slice(0, 7);
+        const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
         const lbl = d.toLocaleString('default', { month: 'long', year: 'numeric' });
         const opt = document.createElement('option');
         opt.value = val;
@@ -748,7 +750,7 @@ body {
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">Monthly Spending Trend</div>
-          <span class="panel-tag" id="trend-month-tag">May 2026</span>
+          <span class="panel-tag" id="trend-month-tag"></span>
         </div>
         <div class="chart-wrap-tall"><canvas id="trendChart"></canvas></div>
       </div>

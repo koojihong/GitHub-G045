@@ -574,6 +574,28 @@ def api_expenses_delete(eid):
     return {"deleted": eid}
 
 
+@app.route("/api/expenses/edit/<int:eid>", methods=["PUT"])
+@login_required
+def api_expenses_edit(eid):
+    uid  = session["user_id"]
+    data = request.get_json()
+    desc     = data.get("description", "").strip()
+    amount   = data.get("amount", 0)
+    category = data.get("category", "others")
+    date     = data.get("date", datetime.date.today().isoformat())
+    if not desc or not amount:
+        return {"error": "Description and amount are required"}, 400
+    db = get_db()
+    db.execute(
+        "UPDATE expenses SET description=?, amount=?, category=?, date=? WHERE id=? AND user_id=?",
+        (desc, float(amount), category, date, eid, uid)
+    )
+    db.commit()
+    db.close()
+    return {"id": eid, "description": desc, "amount": float(amount),
+            "category": category, "date": date}
+
+
 # ── INCOME API ────────────────────────────────────────────────────────────
 
 @app.route("/api/income")
@@ -628,6 +650,28 @@ def api_income_delete(iid):
     db.commit()
     db.close()
     return {"deleted": iid}
+
+
+@app.route("/api/income/edit/<int:iid>", methods=["PUT"])
+@login_required
+def api_income_edit(iid):
+    uid  = session["user_id"]
+    data = request.get_json()
+    desc        = data.get("description", "").strip()
+    amount      = data.get("amount", 0)
+    income_type = data.get("income_type", "Other")
+    date        = data.get("date", datetime.date.today().isoformat())
+    if not desc or not amount:
+        return {"error": "Description and amount are required"}, 400
+    db = get_db()
+    db.execute(
+        "UPDATE income SET description=?, amount=?, type=?, date=? WHERE id=? AND user_id=?",
+        (desc, float(amount), income_type, date, iid, uid)
+    )
+    db.commit()
+    db.close()
+    return {"id": iid, "description": desc, "amount": float(amount),
+            "type": income_type, "date": date}
 
 
 # ── SAVINGS API ───────────────────────────────────────────────────────────

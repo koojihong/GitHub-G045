@@ -39,6 +39,7 @@ body {
   background: var(--dark2); display: flex;
   flex-direction: column; padding: 28px 0 24px;
   position: fixed; top: 0; left: 0; bottom: 0;
+  overflow-x: hidden; overflow-y: auto;
 }
 .logo {
   display: flex; align-items: center; gap: 10px;
@@ -69,7 +70,7 @@ body {
 }
 .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--honey); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; }
 .user-name { font-size: 13px; color: #fff; font-weight: 500; }
-.user-role { font-size: 11px; color: var(--muted); }
+.user-role { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
 
 /* ── MAIN ────────────────────────────────── */
 .main {
@@ -1005,7 +1006,7 @@ async function saveEdit() {
     method: 'PUT',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ description: desc, amount, income_type: type, date })
+    body: JSON.stringify({ description: desc, amount: parseFloat(amount), income_type: type, date })
   });
 
   if (res.ok) {
