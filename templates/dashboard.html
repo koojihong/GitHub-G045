@@ -33,8 +33,8 @@ function loadData(monthStr) {
         fetch(`/api/expenses?month=${month}&year=${year}`).then(r=>r.json()),
         fetch(`/api/income?month=${month}&year=${year}`).then(r=>r.json()),
         fetch('/api/savings').then(r=>r.json()),
-        // budget is embedded in template; read it once
-    ]).then(([expData, incData, savData]) => {
+        fetch(`/api/budget?month=${month}&year=${year}`).then(r=>r.json()),
+    ]).then(([expData, incData, savData, budData]) => {
         const spent   = expData.total   || 0;
         const income  = incData.total   || 0;
         const balance = income - spent;
@@ -64,8 +64,7 @@ function loadData(monthStr) {
         `;
 
         // ── Budget ring ───────────────────────────────
-        const budgetEl = document.getElementById('b-limit');
-        const budgetVal = parseFloat(budgetEl.dataset.budget || 0);
+        const budgetVal = budData.budget || 0;
         renderBudgetRing(spent, budgetVal);
 
         // ── Spending trend chart ──────────────────────

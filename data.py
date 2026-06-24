@@ -674,6 +674,26 @@ def api_income_edit(iid):
             "type": income_type, "date": date}
 
 
+# ── BUDGET API ────────────────────────────────────────────────────────────
+
+@app.route("/api/budget")
+@login_required
+def api_budget_get():
+    uid   = session["user_id"]
+    month = request.args.get("month", datetime.date.today().strftime("%m")).zfill(2)
+    year  = request.args.get("year",  datetime.date.today().strftime("%Y"))
+    month_str = f"{year}-{month}"
+    db  = get_db()
+    bud = db.execute(
+        "SELECT budget, alert_pct FROM budget WHERE user_id=? AND month=?",
+        (uid, month_str)
+    ).fetchone()
+    db.close()
+    if bud:
+        return {"budget": bud["budget"], "alert_pct": bud["alert_pct"], "month": month_str}
+    return {"budget": 0, "alert_pct": 70, "month": month_str}
+
+
 # ── SAVINGS API ───────────────────────────────────────────────────────────
 
 @app.route("/api/savings")
