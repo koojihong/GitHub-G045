@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Budget Bee — Budget</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --honey:    #C47B0E;
+  --honey-lt: #F5D48A;
+  --honey-dk: #7A4D08;
+  --comb:     #FDF3DC;
+  --dark:     #1C1410;
+  --dark2:    #2E2016;
+  --dark3:    #3D2C1E;
+  --muted:    #9A8878;
+  --light:    #FFF9EE;
+  --white:    #FFFFFF;
+  --border:   rgba(196,123,14,0.15);
+  --red:      #D64545;
+  --green:    #2D8A5A;
+  --blue:     #3572B8;
+  --purple:   #6B50C8;
+  --teal:     #1B8C8C;
+  --pink:     #C4507A;
+  --radius:   14px;
+  --shadow:   0 2px 16px rgba(100,60,0,0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--light);
+  color: var(--dark);
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── SIDEBAR ─────────────────────────────── */
+.sidebar {
+  width: 220px;
+  min-height: 100vh;
+  background: var(--dark2);
+  display: flex;
+  flex-direction: column;
+  padding: 28px 0 24px;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 24px 28px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.logo-hex {
+  width: 36px; height: 36px;
+  background: var(--honey);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.logo-text { font-family: 'DM Serif Display', serif; font-size: 18px; color: #fff; }
+.logo-sub  { font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+.nav-section { padding: 20px 16px 8px; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 24px; font-size: 13px; color: rgba(255,255,255,0.55);
+  cursor: pointer; transition: all 0.15s; border-left: 3px solid transparent;
+  text-decoration: none;
+}
+.nav-item:hover { color: #fff; background: rgba(255,255,255,0.04); }
+.nav-item.active { color: var(--honey-lt); border-left-color: var(--honey); background: rgba(196,123,14,0.08); }
+.nav-icon { width: 16px; text-align: center; font-size: 14px; }
+
+.sidebar-footer { margin-top: auto; padding: 16px 24px; }
+.user-pill {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--dark3); border-radius: 10px; padding: 10px 12px;
+}
+.avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--honey); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; }
+.user-name  { font-size: 13px; color: #fff; font-weight: 500; }
+.user-role  { font-size: 11px; color: var(--muted); }
+
+/* ── MAIN CONTENT ────────────────────────── */
+.main {
+  margin-left: 220px;
+  flex: 1 1 auto;
+  width: calc(100% - 220px);
+  min-width: 0;
+  padding: 32px;
+  min-height: 100vh;
+}
+
+/* ── TOPBAR ──────────────────────────────── */
+.topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 28px;
+}
+.page-title { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--dark); }
+.page-sub   { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+/* ── FLASH ───────────────────────────────── */
+.flash {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px; border-radius: var(--radius); margin-bottom: 20px;
+  font-size: 13px; font-weight: 500;
+}
+.flash.success { background:#EDFDF5; color:#0A5232; border:1px solid #A3E8C4; }
+.flash.error   { background:#FDEEEE; color:#7A1A1A; border:1px solid #F0B4B4; }
+
+/* ── PANEL ───────────────────────────────── */
+.panel {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px;
+  box-shadow: var(--shadow);
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.panel-title  { font-size: 14px; font-weight: 600; color: var(--dark); }
+.panel-tag    { font-size: 11px; background: var(--comb); color: var(--honey-dk); padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+
+/* ── FORM ────────────────────────────────── */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 12px; align-items: end;
+}
+.form-group label {
+  display: block; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); margin-bottom: 6px;
+}
+.form-group input {
+  width: 100%; padding: 9px 12px;
+  border: 1px solid var(--border); border-radius: 10px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px;
+  color: var(--dark); background: var(--white); outline: none;
+  transition: border-color 0.2s;
+}
+.form-group input:focus {
+  border-color: var(--honey);
+  box-shadow: 0 0 0 3px rgba(196,123,14,0.1);
+}
+.btn-add {
+  padding: 9px 20px;
+  background: var(--honey); color: #fff;
+  border: none; border-radius: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  transition: all 0.2s;
+}
+.btn-add:hover { background: var(--honey-dk); }
+
+/* ── TABLE ───────────────────────────────── */
+table { width: 100%; min-width: 100%; border-collapse: collapse; }
+thead th {
+  text-align: left; padding: 10px 14px;
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--muted);
+  background: var(--comb); border-bottom: 1px solid var(--border);
+}
+tbody td {
+  padding: 12px 14px; font-size: 13px;
+  border-bottom: 1px solid rgba(196,123,14,0.07);
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: #fffaf0; }
+
+/* ── PROGRESS BAR ────────────────────────── */
+.bar-track { width: 140px; height: 8px; border-radius: 6px; background: var(--comb); overflow: hidden; }
+.bar-fill  { height: 100%; border-radius: 6px; }
+
+/* ── BADGE ───────────────────────────────── */
+.badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-ok   { background:#EDFDF5; color:#0A5232; }
+.badge-warn { background:#FFF4E0; color:#7A4D08; }
+.badge-over { background:#FDEEEE; color:#7A1A1A; }
+
+/* ── EMPTY STATE ─────────────────────────── */
+.empty { text-align: center; padding: 48px 20px; color: var(--muted); font-size: 13px; }
+.empty div { font-size: 36px; margin-bottom: 10px; }
+
+/* ── ALERT BANNER ────────────────────────── */
+.alert-banner {
+  display: none; align-items: center; gap: 10px;
+  padding: 12px 18px; border-radius: var(--radius); margin-bottom: 20px;
+  font-size: 13px; font-weight: 500;
+}
+.alert-banner.ok   { display:flex; background:#EDFDF5; color:#0A5232; border:1px solid #A3E8C4; }
+.alert-banner.warn { display:flex; background:#FFF4E0; color:#7A4D08; border:1px solid #F5D48A; }
+
+/* ── ACTION BUTTONS ──────────────────────── */
+.btn-del, .btn-edit {
+  background: none; border: none; cursor: pointer;
+  font-size: 15px; padding: 4px 6px;
+  border-radius: 6px; transition: all 0.15s;
+}
+.btn-del  { color: var(--border); }
+.btn-edit { color: var(--border); }
+.btn-del:hover  { color: var(--red);   background: #fff0f0; }
+.btn-edit:hover { color: var(--honey); background: var(--comb); }
+
+/* ── EDIT MODAL ──────────────────────────── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.35); z-index: 100;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--white); border-radius: var(--radius);
+  padding: 28px; width: 440px; max-width: 95vw;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  animation: fadeUp 0.2s ease;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
+.modal-title { font-size: 16px; font-weight: 600; margin-bottom: 20px; color: var(--dark); }
+.modal-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+.modal-grid .full { grid-column: 1 / -1; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.btn-cancel {
+  padding: 9px 18px; background: none;
+  border: 1px solid var(--border); border-radius: 10px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px;
+  cursor: pointer; color: var(--muted); transition: all 0.15s;
+}
+.btn-cancel:hover { background: var(--comb); color: var(--dark); }
+.btn-save {
+  padding: 9px 22px; background: var(--honey); color: #fff;
+  border: none; border-radius: 10px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.btn-save:hover { background: var(--honey-dk); }
+
+/* ── RESPONSIVE ──────────────────────────── */
+@media (max-width: 900px) {
+  .form-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-hex">🐝</div>
+    <div>
+      <div class="logo-text">Budget Bee</div>
+      <div class="logo-sub">Finance Tracker</div>
+    </div>
+  </div>
+
+  <div class="nav-section">Main</div>
+  <a href="/dashboard" class="nav-item"><span class="nav-icon">◈</span> Dashboard</a>
+  <a href="/expenses"  class="nav-item"><span class="nav-icon">↕</span> Expenses</a>
+  <a href="/income"    class="nav-item"><span class="nav-icon">◎</span> Income</a>
+  <a href="/budget"    class="nav-item active"><span class="nav-icon">⊚</span> Budget</a>
+  <a href="/savings"   class="nav-item"><span class="nav-icon">◇</span> Savings</a>
+
+  <div class="nav-section">Account</div>
+  <a href="/profile"   class="nav-item"><span class="nav-icon">⊙</span> Profile</a>
+
+  <div class="sidebar-footer">
+        <a href="/logout" style="display:block;text-align:center;padding:9px;margin-bottom:10px;border-radius:9px;border:1px solid rgba(212,135,10,0.3);font-size:13px;color:rgba(255,255,255,0.5);text-decoration:none;transition:all .2s" onmouseover="this.style.background='rgba(212,135,10,0.1)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.5)'">Sign out</a>
+    <div class="user-pill">
+      <div class="avatar" id="sb-avatar">{{ username[0].upper() if username else '?' }}</div>
+      <div>
+        <div class="user-name" id="sb-name">{{ username }}</div>
+        <div class="user-role">{{ email }}</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div>
+      <div class="page-title">Budget</div>
+      <div class="page-sub">Set monthly limits and track how close you are to them</div>
+    </div>
+  </div>
+
+  <!-- ALERT -->
+  <div id="alert-banner" class="alert-banner"></div>
+
+  <!-- FLASH MESSAGES -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        <div class="flash {{ category }}">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <!-- SET BUDGET PANEL -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">🎯 Set a Budget</div>
+    </div>
+    <form method="POST" action="/budget" class="form-grid">
+      <div class="form-group">
+        <label>Month</label>
+        <input type="month" name="month" value="{{ current_month }}" required/>
+      </div>
+      <div class="form-group">
+        <label>Budget Amount (RM)</label>
+        <input type="number" name="budget" placeholder="0.00" min="0" step="0.01" required/>
+      </div>
+      <div class="form-group">
+        <label>Alert at (%)</label>
+        <input type="number" name="alert_pct" placeholder="70" min="1" max="100" value="70"/>
+      </div>
+      <div class="form-group">
+        <label>&nbsp;</label>
+        <button type="submit" class="btn-add">+ Save Budget</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- BUDGET HISTORY PANEL -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Monthly Budgets</div>
+      <span class="panel-tag">{{ budgets|length }} record{{ '' if budgets|length == 1 else 's' }}</span>
+    </div>
+
+    {% if budgets %}
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Limit</th>
+          <th>Spent</th>
+          <th>Usage</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in budgets %}
+        {% set spent = spending.get(b['month'], 0) or 0 %}
+        {% set pct = (spent / b['budget'] * 100) if b['budget'] > 0 else 0 %}
+        {% set pct_display = pct if pct < 100 else 100 %}
+        <tr>
+          <td style="font-weight:500">{{ b['month'] }}</td>
+          <td>RM {{ '%.2f'|format(b['budget']) }}</td>
+          <td style="color:var(--red)">RM {{ '%.2f'|format(spent) }}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="bar-track">
+                <div class="bar-fill" style="width:{{ pct_display }}%; background:{{ '#D64545' if pct >= 100 else '#C47B0E' if pct >= b['alert_pct'] else '#2D8A5A' }};"></div>
+              </div>
+              <span style="color:var(--muted);font-size:12px">{{ '%.0f'|format(pct) }}%</span>
+            </div>
+          </td>
+          <td>
+            {% if pct >= 100 %}
+              <span class="badge badge-over">Over budget</span>
+            {% elif pct >= b['alert_pct'] %}
+              <span class="badge badge-warn">Near limit</span>
+            {% else %}
+              <span class="badge badge-ok">On track</span>
+            {% endif %}
+          </td>
+          <td style="display:flex;gap:4px">
+            <button class="btn-edit" onclick="openEdit({{ b['id'] }},'{{ b['month'] }}',{{ b['budget'] }},{{ b['alert_pct'] }})" title="Edit">✏️</button>
+            <button class="btn-del"  onclick="deleteBudget({{ b['id'] }})" title="Delete">🗑</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="empty"><div>🐝</div>No budgets set yet — add one above to get started</div>
+    {% endif %}
+  </div>
+
+</div><!-- /main -->
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-title">✏️ Edit Budget</div>
+    <div class="modal-grid">
+      <div class="form-group full">
+        <label>Month</label>
+        <input type="month" id="edit-month"/>
+      </div>
+      <div class="form-group">
+        <label>Budget Amount (RM)</label>
+        <input type="number" id="edit-budget" min="0" step="0.01"/>
+      </div>
+      <div class="form-group">
+        <label>Alert at (%)</label>
+        <input type="number" id="edit-alert-pct" min="1" max="100"/>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save"   onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Alert banner ─────────────────────────────────────
+function showAlert(msg, type) {
+  const banner = document.getElementById('alert-banner');
+  banner.textContent = type === 'ok' ? '✓ ' + msg : '⚠ ' + msg;
+  banner.className = 'alert-banner ' + type;
+  setTimeout(() => banner.className = 'alert-banner', 3000);
+}
+
+// ── Delete budget ─────────────────────────────────────
+async function deleteBudget(id) {
+  if (!confirm('Delete this budget?')) return;
+  await fetch(`/api/budget/delete/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+  location.reload();
+}
+
+// ── Edit modal ───────────────────────────────────────
+let editingId = null;
+
+function openEdit(id, month, amount, alertPct) {
+  editingId = id;
+  document.getElementById('edit-month').value     = month;
+  document.getElementById('edit-budget').value     = amount;
+  document.getElementById('edit-alert-pct').value  = alertPct;
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  editingId = null;
+}
+
+async function saveEdit() {
+  const month     = document.getElementById('edit-month').value;
+  const amount    = document.getElementById('edit-budget').value;
+  const alertPct  = document.getElementById('edit-alert-pct').value;
+
+  if (!month || !amount) { showAlert('Month and budget amount are required!', 'warn'); return; }
+
+  const res = await fetch(`/api/budget/edit/${editingId}`, {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ month, budget: amount, alert_pct: alertPct })
+  });
+
+  if (res.ok) {
+    closeModal();
+    location.reload();
+  } else {
+    const data = await res.json().catch(() => ({}));
+    showAlert(data.error || 'Could not save budget.', 'warn');
+  }
+}
+
+// Close modal on overlay click
+document.getElementById('edit-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+
+</body>
+</html>
