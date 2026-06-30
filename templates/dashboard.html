@@ -80,11 +80,42 @@ function loadData(monthStr) {
 
 // ── Budget ring ───────────────────────────────────────
 function renderBudgetRing(spent, budget) {
+    const ringWrap   = document.getElementById('budget-meter-wrap');
+    const emptyState = document.getElementById('budget-empty-state');
+    const statsRow   = document.getElementById('budget-stats-row');
+
+    if (!budget || budget <= 0) {
+        ringWrap.style.display   = 'none';
+        statsRow.style.display   = 'none';
+        emptyState.style.display = 'flex';
+        return;
+    }
+    ringWrap.style.display   = 'flex';
+    statsRow.style.display   = 'flex';
+    emptyState.style.display = 'none';
+
     const pct = budget > 0 ? Math.min((spent/budget)*100, 100) : 0;
     document.getElementById('ring-pct').textContent = pct.toFixed(0) + '%';
     document.getElementById('b-spent').textContent  = rm(spent);
     document.getElementById('b-limit').textContent  = budget > 0 ? rm(budget) : '—';
     document.getElementById('b-left').textContent   = budget > 0 ? rm(Math.max(budget-spent,0)) : '—';
+
+    const qbForm = document.getElementById('quick-budget-form');
+    if (qbForm && !qbForm.dataset.bound) {
+        qbForm.dataset.bound = '1';
+        qbForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const val = document.getElementById('quick-budget-input').value;
+            try {
+                await fetch('/budget', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'budget=' + encodeURIComponent(val)
+                });
+            } catch (err) {}
+            location.reload();
+        });
+    }
 
     const color = pct >= 100 ? '#D64545' : pct >= 70 ? '#C47B0E' : '#2D8A5A';
     const ctx = document.getElementById('ringChart').getContext('2d');
@@ -202,8 +233,8 @@ function switchView(view) {
     currentView = view;
     document.getElementById('tab-btn-monthly').classList.toggle('active', view === 'monthly');
     document.getElementById('tab-btn-overall').classList.toggle('active', view === 'overall');
-    document.getElementById('view-monthly').style.display = view === 'monthly' ? '' : 'none';
-    document.getElementById('view-overall').style.display  = view === 'overall' ? '' : 'none';
+    document.getElementById('view-monthly').style.display = view === 'monthly' ? 'flex' : 'none';
+    document.getElementById('view-overall').style.display  = view === 'overall' ? 'flex' : 'none';
     document.getElementById('month-select-wrap').style.display = view === 'monthly' ? '' : 'none';
 
     if (view === 'overall' && !overallLoaded) {
@@ -509,7 +540,7 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 32px 32px 0 32px;
+  padding: 18px 24px 14px 24px;
 }
 
 .main-header {
@@ -518,9 +549,10 @@ body {
 
 .main-body {
   flex: 1;
-  overflow-y: auto;
-  padding-bottom: 32px;
-  padding-right: 4px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .main-body::-webkit-scrollbar { width: 5px; }
@@ -530,28 +562,29 @@ body {
 /* ── TOPBAR ──────────────────────────────── */
 .topbar {
   display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
-.page-title { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--dark); }
-.page-sub   { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.page-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--dark); }
+.page-sub   { font-size: 11px; color: var(--muted); margin-top: 1px; }
 .month-select {
   display: flex; align-items: center; gap: 6px;
   background: var(--white); border: 1px solid var(--border);
-  border-radius: 10px; padding: 8px 14px; font-size: 13px; color: var(--dark);
+  border-radius: 10px; padding: 6px 12px; font-size: 12px; color: var(--dark);
   cursor: pointer;
 }
-.month-select select { border: none; outline: none; font-family: 'DM Sans',sans-serif; font-size: 13px; background: transparent; cursor: pointer; color: var(--dark); }
+.month-select select { border: none; outline: none; font-family: 'DM Sans',sans-serif; font-size: 12px; background: transparent; cursor: pointer; color: var(--dark); }
 
 /* ── TABS ────────────────────────────────── */
 .tab-nav {
   display: flex; gap: 4px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 20px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
 }
 .tab-btn {
   font-family: 'DM Sans', sans-serif;
   background: none; border: none; cursor: pointer;
-  padding: 10px 22px; font-size: 13px; font-weight: 600;
+  padding: 7px 18px; font-size: 12px; font-weight: 600;
   color: var(--muted);
   border-bottom: 3px solid transparent;
   transition: color 0.15s, border-color 0.15s;
@@ -560,10 +593,10 @@ body {
 .tab-btn.active { color: var(--honey-dk); border-bottom-color: var(--honey); }
 
 /* ── METRIC CARDS ────────────────────────── */
-.metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+.metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 10px; flex-shrink: 0; }
 .metric-card {
   background: var(--white); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 20px;
+  border-radius: 10px; padding: 12px 14px;
   box-shadow: var(--shadow); transition: transform 0.15s;
   animation: fadeUp 0.5s ease both;
 }
@@ -575,85 +608,88 @@ body {
 @keyframes fadeUp { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
 
 .metric-icon {
-  width: 36px; height: 36px; border-radius: 9px;
+  width: 26px; height: 26px; border-radius: 7px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px; margin-bottom: 12px;
+  font-size: 12px; margin-bottom: 6px;
 }
-.metric-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-.metric-value { font-size: 24px; font-weight: 600; color: var(--dark); line-height: 1; }
+.metric-label { font-size: 9px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+.metric-value { font-size: 17px; font-weight: 600; color: var(--dark); line-height: 1; }
 .metric-value.red    { color: var(--red); }
 .metric-value.green  { color: var(--green); }
 .metric-value.honey  { color: var(--honey); }
-.metric-change { font-size: 12px; margin-top: 6px; color: var(--muted); }
+.metric-change { font-size: 10px; margin-top: 3px; color: var(--muted); }
 .metric-change b { color: var(--green); }
 .metric-change b.neg { color: var(--red); }
 
 /* ── GRID LAYOUT ─────────────────────────── */
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-.grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; min-height: 0; }
+.grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-bottom: 10px; flex-shrink: 0; }
 
 /* ── PANEL ───────────────────────────────── */
 .panel {
   background: var(--white); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 22px;
+  border-radius: 10px; padding: 12px 14px;
   box-shadow: var(--shadow);
   animation: fadeUp 0.5s ease 0.25s both;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
-.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-.panel-title { font-size: 14px; font-weight: 600; color: var(--dark); }
-.panel-tag { font-size: 11px; background: var(--comb); color: var(--honey-dk); padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-shrink: 0; }
+.panel-title { font-size: 12px; font-weight: 600; color: var(--dark); }
+.panel-tag { font-size: 10px; background: var(--comb); color: var(--honey-dk); padding: 2px 8px; border-radius: 20px; font-weight: 500; }
 
 /* ── CHART WRAPPER ───────────────────────── */
-.chart-wrap { position: relative; height: 200px; }
-.chart-wrap-tall { position: relative; height: 220px; }
+.chart-wrap { position: relative; height: 130px; }
+.chart-wrap-tall { position: relative; flex: 1; min-height: 0; }
 
 /* ── CATEGORY LIST ───────────────────────── */
-.cat-list { display: flex; flex-direction: column; gap: 10px; max-height: 160px; overflow-y: auto; padding-right: 4px; }
-.cat-item { display: flex; align-items: center; gap: 10px; }
-.cat-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.cat-name { font-size: 13px; color: var(--dark); flex: 1; }
-.cat-amt  { font-size: 13px; font-weight: 600; color: var(--dark); }
-.cat-pct  { font-size: 11px; color: var(--muted); min-width: 34px; text-align: right; }
+.cat-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; padding-right: 4px; flex: 1; min-height: 0; }
+.cat-item { display: flex; align-items: center; gap: 8px; }
+.cat-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.cat-name { font-size: 11px; color: var(--dark); flex: 1; }
+.cat-amt  { font-size: 11px; font-weight: 600; color: var(--dark); }
+.cat-pct  { font-size: 10px; color: var(--muted); min-width: 30px; text-align: right; }
 
 /* ── PROGRESS ────────────────────────────── */
-.prog-bar { height: 6px; background: var(--comb); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.prog-bar { height: 5px; background: var(--comb); border-radius: 3px; overflow: hidden; margin-top: 3px; }
 .prog-fill { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(.4,0,.2,1); }
 
 /* ── SAVINGS GOALS ───────────────────────── */
-.goal-list-scroll { max-height: 220px; overflow-y: auto; padding-right: 4px; }
-.goal-item { margin-bottom: 16px; }
+.goal-list-scroll { overflow-y: auto; padding-right: 4px; flex: 1; min-height: 0; }
+.goal-item { margin-bottom: 9px; }
 .goal-item:last-child { margin-bottom: 0; }
-.goal-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-.goal-name { font-size: 13px; font-weight: 500; }
-.goal-meta { font-size: 11px; color: var(--muted); }
-.goal-pct  { font-size: 13px; font-weight: 600; color: var(--honey); }
+.goal-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
+.goal-name { font-size: 11px; font-weight: 500; }
+.goal-meta { font-size: 10px; color: var(--muted); }
+.goal-pct  { font-size: 11px; font-weight: 600; color: var(--honey); }
 
 /* ── TRANSACTIONS ────────────────────────── */
-.tx-list { display: flex; flex-direction: column; gap: 1px; max-height: 220px; overflow-y: auto; padding-right: 4px; }
+.tx-list { display: flex; flex-direction: column; gap: 1px; overflow-y: auto; padding-right: 4px; flex: 1; min-height: 0; }
 .tx-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 0; border-bottom: 1px solid rgba(196,123,14,0.07);
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid rgba(196,123,14,0.07);
   transition: background 0.1s;
 }
 .tx-row:last-child { border-bottom: none; }
 .tx-icon {
-  width: 36px; height: 36px; border-radius: 10px;
-  display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0;
+  width: 26px; height: 26px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0;
 }
 .tx-info { flex: 1; }
-.tx-desc { font-size: 13px; font-weight: 500; color: var(--dark); }
-.tx-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
-.tx-amt  { font-size: 14px; font-weight: 600; color: var(--red); }
+.tx-desc { font-size: 11px; font-weight: 500; color: var(--dark); }
+.tx-meta { font-size: 9px; color: var(--muted); margin-top: 0px; }
+.tx-amt  { font-size: 12px; font-weight: 600; color: var(--red); }
 
 /* ── BUDGET METER ────────────────────────── */
-.budget-meter { text-align: center; padding: 10px 0; }
+.budget-meter { text-align: center; padding: 0; flex-shrink: 0; }
 .budget-ring  { position: relative; display: inline-block; }
 .budget-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; }
 .budget-pct-num { font-size: 26px; font-weight: 700; color: var(--dark); line-height: 1; }
 .budget-pct-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.budget-stats { display: flex; justify-content: space-between; margin-top: 16px; }
-.bstat-label { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
-.bstat-value { font-size: 14px; font-weight: 600; }
+.budget-stats { display: flex; justify-content: space-between; margin-top: 8px; flex-shrink: 0; }
+.bstat-label { font-size: 9px; color: var(--muted); margin-bottom: 2px; }
+.bstat-value { font-size: 12px; font-weight: 600; }
 
 /* ── WEEKLY SPEND ────────────────────────── */
 .week-labels { display: flex; justify-content: space-between; margin-top: 6px; }
@@ -739,7 +775,7 @@ body {
 
 <div class="main-body">
   <!-- ════════════════ MONTHLY VIEW ════════════════ -->
-  <div id="view-monthly">
+  <div id="view-monthly" style="display:flex;flex-direction:column;flex:1;min-height:0;">
 
     <!-- METRICS -->
     <div class="metrics" id="metrics-grid"></div>
@@ -757,16 +793,26 @@ body {
         <div class="panel-header">
           <div class="panel-title">Budget Usage</div>
         </div>
-        <div class="budget-meter">
+        <div class="budget-meter" id="budget-meter-wrap">
           <div class="budget-ring">
-            <canvas id="ringChart" width="160" height="160"></canvas>
+            <canvas id="ringChart" width="110" height="110"></canvas>
             <div class="budget-center">
               <div class="budget-pct-num" id="ring-pct">0%</div>
               <div class="budget-pct-lbl">used</div>
             </div>
           </div>
         </div>
-        <div class="budget-stats">
+        <div class="budget-empty" id="budget-empty-state" style="display:none;text-align:center;padding:10px 8px;flex:1;display:none;flex-direction:column;justify-content:center;">
+          <div style="font-size:26px;margin-bottom:4px;">🎯</div>
+          <div style="font-size:11px;color:var(--dark);font-weight:600;margin-bottom:8px;">No budget set yet</div>
+          <form id="quick-budget-form" style="display:flex;gap:6px;justify-content:center;align-items:center;">
+            <span style="font-size:11px;color:var(--muted);">RM</span>
+            <input type="number" id="quick-budget-input" min="0" step="0.01" placeholder="0.00" required
+              style="width:80px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--dark);outline:none;">
+            <button type="submit" style="padding:6px 12px;background:var(--honey);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;">Save</button>
+          </form>
+        </div>
+        <div class="budget-stats" id="budget-stats-row">
           <div><div class="bstat-label">Spent</div><div class="bstat-value" id="b-spent" style="color:var(--red)">—</div></div>
           <div style="text-align:center"><div class="bstat-label">Limit</div><div class="bstat-value" id="b-limit" data-budget="{{ budget or 0 }}" style="color:var(--honey)">—</div></div>
           <div style="text-align:right"><div class="bstat-label">Left</div><div class="bstat-value" id="b-left" style="color:var(--green)">—</div></div>
@@ -782,7 +828,7 @@ body {
           <span class="panel-tag" id="cat-total-tag">—</span>
         </div>
         <div style="display:flex;gap:20px;align-items:center">
-          <div style="flex-shrink:0"><canvas id="donutChart" width="140" height="140"></canvas></div>
+          <div style="flex-shrink:0"><canvas id="donutChart" width="90" height="90"></canvas></div>
           <div class="cat-list" id="cat-list" style="flex:1"></div>
         </div>
       </div>
@@ -799,7 +845,7 @@ body {
   </div><!-- /view-monthly -->
 
   <!-- ════════════════ OVERALL VIEW ════════════════ -->
-  <div id="view-overall" style="display:none">
+  <div id="view-overall" style="display:none;flex-direction:column;flex:1;min-height:0;">
 
     <!-- METRICS -->
     <div class="metrics" id="overall-metrics-grid"></div>
@@ -819,7 +865,7 @@ body {
         </div>
         <div class="budget-meter">
           <div class="budget-ring">
-            <canvas id="overallRingChart" width="160" height="160"></canvas>
+            <canvas id="overallRingChart" width="110" height="110"></canvas>
             <div class="budget-center">
               <div class="budget-pct-num" id="ov-ring-pct">0%</div>
               <div class="budget-pct-lbl">saved</div>
@@ -842,7 +888,7 @@ body {
           <span class="panel-tag" id="overall-cat-total-tag">—</span>
         </div>
         <div style="display:flex;gap:20px;align-items:center">
-          <div style="flex-shrink:0"><canvas id="overallDonutChart" width="140" height="140"></canvas></div>
+          <div style="flex-shrink:0"><canvas id="overallDonutChart" width="90" height="90"></canvas></div>
           <div class="cat-list" id="overall-cat-list" style="flex:1"></div>
         </div>
       </div>
