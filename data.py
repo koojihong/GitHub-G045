@@ -291,7 +291,8 @@ def budget():
     db.close()
 
     return render_template("budget.html", **sv(),
-                           budgets=budgets, spending=spending_map)
+                           budgets=budgets, spending=spending_map,
+                           current_month=datetime.date.today().strftime("%Y-%m"))
 
 
 @app.route("/savings", methods=["GET", "POST"])
@@ -692,6 +693,41 @@ def api_budget_get():
     if bud:
         return {"budget": bud["budget"], "alert_pct": bud["alert_pct"], "month": month_str}
     return {"budget": 0, "alert_pct": 70, "month": month_str}
+
+
+@app.route("/api/budget/delete/<int:bid>", methods=["DELETE"])
+@login_required
+def api_budget_delete(bid):
+    uid = session["user_id"]
+    db  = get_db()
+    db.execute("DELETE FROM budget WHERE id=? AND user_id=?", (bid, uid))
+    db.commit()
+    db.close()
+    return {"deleted": bid}
+
+
+@app.route("/api/budget/edit/<int:bid>", methods=["PUT"])
+@login_required
+def api_budget_edit(bid):
+    uid  = session["user_id"]
+    data = request.get_json()
+    month     = data.get("month", "").strip()
+    amount    = data.get("budget", 0)
+    alert_pct = data.get("alert_pct", 70)
+    if not month or not amount:
+        return {"error": "Month and budget amount are required"}, 400
+    db = get_db()
+    try:
+        db.execute(
+            "UPDATE budget SET month=?, budget=?, alert_pct=? WHERE id=? AND user_id=?",
+            (month, float(amount), int(alert_pct), bid, uid)
+        )
+        db.commit()
+    except sqlite3.IntegrityError:
+        db.close()
+        return {"error": f"A budget for {month} already exists"}, 409
+    db.close()
+    return {"id": bid, "month": month, "budget": float(amount), "alert_pct": int(alert_pct)}
 
 
 # ── SAVINGS API ───────────────────────────────────────────────────────────

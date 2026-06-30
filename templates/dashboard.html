@@ -29,11 +29,12 @@ function loadData(monthStr) {
     if (monthStr) currentMonth = monthStr;
     const [year, month] = currentMonth.split('-');
 
+    const noCache = { cache: 'no-store' };
     Promise.all([
-        fetch(`/api/expenses?month=${month}&year=${year}`).then(r=>r.json()),
-        fetch(`/api/income?month=${month}&year=${year}`).then(r=>r.json()),
-        fetch('/api/savings').then(r=>r.json()),
-        fetch(`/api/budget?month=${month}&year=${year}`).then(r=>r.json()),
+        fetch(`/api/expenses?month=${month}&year=${year}`, noCache).then(r=>r.json()),
+        fetch(`/api/income?month=${month}&year=${year}`, noCache).then(r=>r.json()),
+        fetch('/api/savings', noCache).then(r=>r.json()),
+        fetch(`/api/budget?month=${month}&year=${year}`, noCache).then(r=>r.json()),
     ]).then(([expData, incData, savData, budData]) => {
         const spent   = expData.total   || 0;
         const income  = incData.total   || 0;
@@ -99,23 +100,6 @@ function renderBudgetRing(spent, budget) {
     document.getElementById('b-spent').textContent  = rm(spent);
     document.getElementById('b-limit').textContent  = budget > 0 ? rm(budget) : '—';
     document.getElementById('b-left').textContent   = budget > 0 ? rm(Math.max(budget-spent,0)) : '—';
-
-    const qbForm = document.getElementById('quick-budget-form');
-    if (qbForm && !qbForm.dataset.bound) {
-        qbForm.dataset.bound = '1';
-        qbForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const val = document.getElementById('quick-budget-input').value;
-            try {
-                await fetch('/budget', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'budget=' + encodeURIComponent(val)
-                });
-            } catch (err) {}
-            location.reload();
-        });
-    }
 
     const color = pct >= 100 ? '#D64545' : pct >= 70 ? '#C47B0E' : '#2D8A5A';
     const ctx = document.getElementById('ringChart').getContext('2d');
@@ -448,6 +432,21 @@ document.addEventListener('DOMContentLoaded', function () {
     if (tag) tag.textContent = label;
 
     loadData();
+});
+
+// ── Refresh on bfcache restore ──────────────────────────
+// If the user navigates back to this page (e.g. via the browser's
+// back button) after setting a budget elsewhere, some browsers restore
+// the page from the back-forward cache without re-running DOMContentLoaded,
+// which left stale numbers on screen. This forces a fresh data load.
+window.addEventListener('pageshow', function (event) {
+    if (event.persisted) {
+        loadData(currentMonth);
+        if (currentView === 'overall') {
+            overallLoaded = false;
+            loadOverallData();
+        }
+    }
 });
 </script>
 
@@ -806,12 +805,7 @@ body {
         <div class="budget-empty" id="budget-empty-state" style="display:none;text-align:center;padding:10px 8px;flex:1;display:none;flex-direction:column;justify-content:center;">
           <div style="font-size:26px;margin-bottom:4px;">🎯</div>
           <div style="font-size:11px;color:var(--dark);font-weight:600;margin-bottom:8px;">No budget set yet</div>
-          <form id="quick-budget-form" style="display:flex;gap:6px;justify-content:center;align-items:center;">
-            <span style="font-size:11px;color:var(--muted);">RM</span>
-            <input type="number" id="quick-budget-input" min="0" step="0.01" placeholder="0.00" required
-              style="width:80px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--dark);outline:none;">
-            <button type="submit" style="padding:6px 12px;background:var(--honey);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;">Save</button>
-          </form>
+          <a href="/budget" style="font-size:11px;color:var(--honey);font-weight:600;text-decoration:none;">Set a budget →</a>
         </div>
         <div class="budget-stats" id="budget-stats-row">
           <div><div class="bstat-label">Spent</div><div class="bstat-value" id="b-spent" style="color:var(--red)">—</div></div>
