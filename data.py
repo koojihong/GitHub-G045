@@ -524,18 +524,25 @@ def income():
 @app.route("/api/expenses")
 @login_required
 def api_expenses_get():
-    uid   = session["user_id"]
-    month = request.args.get("month", datetime.date.today().strftime("%m")).zfill(2)
-    year  = request.args.get("year",  datetime.date.today().strftime("%Y"))
-    db    = get_db()
-    rows  = db.execute(
-        """SELECT * FROM expenses
-           WHERE user_id=?
-             AND strftime('%m',date)=?
-             AND strftime('%Y',date)=?
-           ORDER BY date DESC""",
-        (uid, month, year)
-    ).fetchall()
+    uid      = session["user_id"]
+    all_time = request.args.get("all", "false").lower() == "true"
+    db       = get_db()
+    if all_time:
+        rows = db.execute(
+            "SELECT * FROM expenses WHERE user_id=? ORDER BY date DESC",
+            (uid,)
+        ).fetchall()
+    else:
+        month = request.args.get("month", datetime.date.today().strftime("%m")).zfill(2)
+        year  = request.args.get("year",  datetime.date.today().strftime("%Y"))
+        rows  = db.execute(
+            """SELECT * FROM expenses
+               WHERE user_id=?
+                 AND strftime('%m',date)=?
+                 AND strftime('%Y',date)=?
+               ORDER BY date DESC""",
+            (uid, month, year)
+        ).fetchall()
     total = sum(r["amount"] for r in rows)
     db.close()
     return {"expenses": [dict(r) for r in rows], "total": round(total, 2)}
@@ -548,7 +555,7 @@ def api_expenses_add():
     data = request.get_json()
     desc     = data.get("description", "").strip()
     amount   = data.get("amount", 0)
-    category = data.get("category", "others")
+    category = data.get("category", "Other")
     date     = data.get("date", datetime.date.today().isoformat())
     if not desc or not amount:
         return {"error": "Description and amount are required"}, 400
@@ -582,7 +589,7 @@ def api_expenses_edit(eid):
     data = request.get_json()
     desc     = data.get("description", "").strip()
     amount   = data.get("amount", 0)
-    category = data.get("category", "others")
+    category = data.get("category", "Other")
     date     = data.get("date", datetime.date.today().isoformat())
     if not desc or not amount:
         return {"error": "Description and amount are required"}, 400
@@ -602,18 +609,25 @@ def api_expenses_edit(eid):
 @app.route("/api/income")
 @login_required
 def api_income_get():
-    uid   = session["user_id"]
-    month = request.args.get("month", datetime.date.today().strftime("%m")).zfill(2)
-    year  = request.args.get("year",  datetime.date.today().strftime("%Y"))
-    db    = get_db()
-    rows  = db.execute(
-        """SELECT * FROM income
-           WHERE user_id=?
-             AND strftime('%m',date)=?
-             AND strftime('%Y',date)=?
-           ORDER BY date DESC""",
-        (uid, month, year)
-    ).fetchall()
+    uid      = session["user_id"]
+    all_time = request.args.get("all", "false").lower() == "true"
+    db       = get_db()
+    if all_time:
+        rows = db.execute(
+            "SELECT * FROM income WHERE user_id=? ORDER BY date DESC",
+            (uid,)
+        ).fetchall()
+    else:
+        month = request.args.get("month", datetime.date.today().strftime("%m")).zfill(2)
+        year  = request.args.get("year",  datetime.date.today().strftime("%Y"))
+        rows  = db.execute(
+            """SELECT * FROM income
+               WHERE user_id=?
+                 AND strftime('%m',date)=?
+                 AND strftime('%Y',date)=?
+               ORDER BY date DESC""",
+            (uid, month, year)
+        ).fetchall()
     total = sum(r["amount"] for r in rows)
     db.close()
     return {"income": [dict(r) for r in rows], "total": round(total, 2)}
@@ -626,7 +640,7 @@ def api_income_add():
     data = request.get_json()
     desc        = data.get("description", "").strip()
     amount      = data.get("amount", 0)
-    income_type = data.get("income_type", "salary")
+    income_type = data.get("income_type", "Salary")
     date        = data.get("date", datetime.date.today().isoformat())
     if not desc or not amount:
         return {"error": "Description and amount are required"}, 400

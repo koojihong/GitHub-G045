@@ -8,8 +8,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 const CAT_COLORS = {
-  food:'#2D8A5A', transport:'#3572B8', shopping:'#6B50C8',
-  health:'#D64545', entertainment:'#C4507A', utilities:'#1B8C8C', others:'#9A8878'
+  Bills:'#1B8C8C', Food:'#2D8A5A', Health:'#D64545',
+  Shopping:'#6B50C8', Transport:'#3572B8', Other:'#9A8878'
 };
 
 let trendChart = null, ringChart = null, donutChart = null;
@@ -187,7 +187,7 @@ function renderDonut(expenses, total) {
 function renderTransactions(expenses) {
     const recent = expenses.slice(0, 5);
     document.getElementById('tx-count-tag').textContent = recent.length + ' recent';
-    const catIcons = { food:'🍜', transport:'🚗', shopping:'🛍️', health:'💊', entertainment:'🎉', utilities:'💡', others:'💸' };
+    const catIcons = { Bills:'💡', Food:'🍜', Health:'💊', Shopping:'🛍️', Transport:'🚗', Other:'📦' };
     document.getElementById('tx-list').innerHTML = recent.length
         ? recent.map(t => `
             <div class="tx-row">

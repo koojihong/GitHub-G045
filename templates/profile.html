@@ -261,7 +261,7 @@ body {
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;flex-shrink:0;">
       <div style="text-align:center;background:var(--comb);border-radius:10px;padding:12px 16px;">
         <div style="font-size:18px;font-weight:700;color:var(--honey);" id="stat-expenses">—</div>
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;">Expenses</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;">All Expenses</div>
       </div>
       <div style="text-align:center;background:var(--comb);border-radius:10px;padding:12px 16px;">
         <div style="font-size:18px;font-weight:700;color:var(--green);" id="stat-savings">—</div>
@@ -269,7 +269,7 @@ body {
       </div>
       <div style="text-align:center;background:var(--comb);border-radius:10px;padding:12px 16px;">
         <div style="font-size:18px;font-weight:700;color:var(--blue);" id="stat-income">—</div>
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;">Income</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;">All Income</div>
       </div>
     </div>
   </div>
@@ -380,9 +380,9 @@ function checkStrength(pw) {
 async function loadStats() {
   try {
     const [expRes, incRes, savRes] = await Promise.all([
-      fetch('/api/expenses', {credentials:'same-origin'}),
-      fetch('/api/income',   {credentials:'same-origin'}),
-      fetch('/api/savings',  {credentials:'same-origin'})
+      fetch('/api/expenses?all=true', {credentials:'same-origin'}),
+      fetch('/api/income?all=true',   {credentials:'same-origin'}),
+      fetch('/api/savings',           {credentials:'same-origin'})
     ]);
     if (expRes.ok) {
       const exp = await expRes.json();
