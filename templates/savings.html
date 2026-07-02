@@ -266,7 +266,7 @@ body {
   <div class="topbar">
     <div>
       <div class="page-title">Savings Goals</div>
-      <div class="page-sub">Set targets and track your progress towards financial goals</div>
+      <div class="page-sub">Track your monthly savings goals and overall progress</div>
     </div>
   </div>
 
@@ -274,7 +274,7 @@ body {
   <div class="metrics">
     <div class="metric-card">
       <div class="metric-icon" style="background:#FDF3DC">🎯</div>
-      <div class="metric-label">Total Goals</div>
+      <div class="metric-label">Saving Goal for This Month</div>
       <div class="metric-value honey" id="m-goals">—</div>
     </div>
     <div class="metric-card">
@@ -284,49 +284,22 @@ body {
     </div>
     <div class="metric-card">
       <div class="metric-icon" style="background:#EDFDF5">🏆</div>
-      <div class="metric-label">Goals Completed</div>
+      <div class="metric-label">Your Progress</div>
       <div class="metric-value green" id="m-done">—</div>
     </div>
-  </div>
-
-  <!-- ADD GOAL PANEL -->
-  <div class="panel">
-    <div class="panel-header">
-      <div class="panel-title">+ Add New Savings Goal</div>
-    </div>
-    <form onsubmit="addGoal(event)">
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Goal Name</label>
-          <input type="text" name="goal_name" placeholder="e.g. New Laptop, Emergency Fund" required>
-        </div>
-        <div class="form-group">
-          <label>Target Amount (RM)</label>
-          <input type="number" name="target" placeholder="0.00" step="0.01" required>
-        </div>
-        <div class="form-group">
-          <label>Target Date</label>
-          <input type="date" name="target_date">
-        </div>
-        <div class="form-group">
-          <label>&nbsp;</label>
-          <button type="submit" class="btn-add">+ Add Goal</button>
-        </div>
-      </div>
-    </form>
   </div>
 
   <!-- GOALS PANEL -->
   <div class="panel">
     <div class="panel-header">
-      <div class="panel-title">My Goals</div>
+      <div class="panel-title">My Goals <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:6px">— showing completion status for this month</span></div>
       <span class="panel-tag" id="goals-tag">0 goals</span>
     </div>
     <div id="goals-container">
       <!-- Ji Hong will populate this with real database data -->
       <div class="empty">
         <div>🐷</div>
-        No savings goals yet — add your first goal above
+        No savings goals yet for this month
       </div>
     </div>
   </div>
@@ -362,13 +335,26 @@ async function loadGoals() {
   // Update metric cards
   const totalSaved = goals.reduce((s, g) => s + g.saved_amount, 0);
   const completed  = goals.filter(g => g.saved_amount >= g.target_amount).length;
-  document.getElementById('m-goals').textContent = goals.length;
+  // Monthly goal: sum of target amounts for this month
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear  = now.getFullYear();
+  const monthlyGoals = goals.filter(g => {
+    if (!g.deadline) return true;
+    const d = new Date(g.deadline);
+    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+  });
+  const monthlyTarget = monthlyGoals.reduce((s,g) => s + g.target_amount, 0);
+  document.getElementById('m-goals').textContent = monthlyTarget > 0 ? 'RM ' + monthlyTarget.toFixed(2) : goals.length + ' goals';
   document.getElementById('m-saved').textContent = `RM ${totalSaved.toFixed(2)}`;
-  document.getElementById('m-done').textContent  = completed;
+  const overallPct = goals.length > 0
+    ? (goals.reduce((s,g) => s + Math.min(g.saved_amount/g.target_amount*100,100),0) / goals.length)
+    : 0;
+  document.getElementById('m-done').textContent = overallPct.toFixed(0) + '%';
   tag.textContent = `${goals.length} goal${goals.length !== 1 ? 's' : ''}`;
 
   if (goals.length === 0) {
-    container.innerHTML = `<div class="empty"><div>🐷</div>No savings goals yet — add your first goal above</div>`;
+    container.innerHTML = `<div class="empty"><div>🐷</div>No savings goals yet for this month</div>`;
     return;
   }
 

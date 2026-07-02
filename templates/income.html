@@ -464,14 +464,10 @@ tbody tr:hover { background: #fffaf0; }
       </div>
     </div>
 
-    <!-- Preset templates -->
-    <div class="preset-label">Quick Templates</div>
-    <div class="preset-row">
-      <button class="preset-btn" onclick="applyPreset('student', this)">🎒 Student</button>
-      <button class="preset-btn" onclick="applyPreset('worker', this)">💼 Working Adult</button>
-      <button class="preset-btn" onclick="applyPreset('saver', this)">🐷 Aggressive Saver</button>
-      <button class="preset-btn sel" onclick="applyPreset('balanced', this)">⚖️ Balanced (50/30/20)</button>
-      <button class="preset-btn" onclick="applyPreset('custom', this)">✏️ Custom</button>
+    <!-- Default template label -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);">My Budget Categories</div>
+      <button onclick="resetToDefault()" style="padding:5px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--white);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;color:var(--muted);cursor:pointer;" onmouseover="this.style.borderColor='var(--honey)';this.style.color='var(--honey-dk)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">↺ Reset to Default</button>
     </div>
 
     <!-- Allocation table -->
@@ -802,67 +798,40 @@ function showAlert(msg, type) {
 
 // ── INCOME DISTRIBUTION CALCULATOR ───────────────────
 
-const PRESETS = {
-  balanced: {
-    label: '50/30/20 Balanced',
-    rows: [
-      { icon:'🏠', name:'Housing & Utilities',   pct:30, color:'#C47B0E' },
-      { icon:'🍜', name:'Food & Groceries',       pct:20, color:'#2D8A5A' },
-      { icon:'🚗', name:'Transport',              pct:10, color:'#3572B8' },
-      { icon:'🐷', name:'Savings',                pct:20, color:'#6B50C8' },
-      { icon:'🎉', name:'Entertainment & Wants',  pct:10, color:'#C4507A' },
-      { icon:'💊', name:'Health & Emergency',     pct:10, color:'#D64545' },
-    ]
-  },
-  student: {
-    label: 'Student Budget',
-    rows: [
-      { icon:'🍜', name:'Food & Drinks',          pct:35, color:'#2D8A5A' },
-      { icon:'📚', name:'Education & Books',      pct:20, color:'#3572B8' },
-      { icon:'🚗', name:'Transport',              pct:15, color:'#C47B0E' },
-      { icon:'🐷', name:'Savings',                pct:15, color:'#6B50C8' },
-      { icon:'🎉', name:'Social & Entertainment', pct:10, color:'#C4507A' },
-      { icon:'💊', name:'Personal Care',          pct:5,  color:'#D64545' },
-    ]
-  },
-  worker: {
-    label: 'Working Adult',
-    rows: [
-      { icon:'🏠', name:'Rent / Mortgage',        pct:30, color:'#C47B0E' },
-      { icon:'🍜', name:'Food & Groceries',       pct:15, color:'#2D8A5A' },
-      { icon:'🚗', name:'Transport / Car Loan',   pct:15, color:'#3572B8' },
-      { icon:'🐷', name:'Savings & Investment',   pct:20, color:'#6B50C8' },
-      { icon:'💊', name:'Insurance & Health',     pct:10, color:'#D64545' },
-      { icon:'🎉', name:'Lifestyle & Wants',      pct:10, color:'#C4507A' },
-    ]
-  },
-  saver: {
-    label: 'Aggressive Saver',
-    rows: [
-      { icon:'🏠', name:'Housing & Utilities',   pct:25, color:'#C47B0E' },
-      { icon:'🍜', name:'Food (meal prep)',       pct:15, color:'#2D8A5A' },
-      { icon:'🚗', name:'Transport',             pct:10, color:'#3572B8' },
-      { icon:'🐷', name:'Savings',               pct:35, color:'#6B50C8' },
-      { icon:'💊', name:'Health',                pct:10, color:'#D64545' },
-      { icon:'🎉', name:'Wants (strict)',        pct:5,  color:'#C4507A' },
-    ]
-  },
-  custom: {
-    label: 'Custom',
-    rows: [
-      { icon:'🏠', name:'Housing',               pct:0, color:'#C47B0E' },
-      { icon:'🍜', name:'Food',                  pct:0, color:'#2D8A5A' },
-      { icon:'🐷', name:'Savings',               pct:0, color:'#6B50C8' },
-    ]
-  }
-};
+const COLORS = ['#C47B0E','#2D8A5A','#3572B8','#6B50C8','#C4507A','#D64545','#1B8C8C','#E67E22'];
+
+const DEFAULT_ROWS = [
+  { icon:'🏠', name:'Housing & Utilities',  pct:30 },
+  { icon:'🍜', name:'Food & Groceries',     pct:20 },
+  { icon:'🚗', name:'Transport',            pct:10 },
+  { icon:'🐷', name:'Savings',              pct:20 },
+  { icon:'🎉', name:'Entertainment',        pct:10 },
+  { icon:'💊', name:'Health & Emergency',   pct:10 },
+];
+
+// Load from localStorage or use default
+function loadSavedRows() {
+  try {
+    const saved = localStorage.getItem('budgetbee_alloc');
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return null;
+}
+
+function saveRows() {
+  try {
+    localStorage.setItem('budgetbee_alloc', JSON.stringify(
+      allocRows.map(r => ({ icon: r.icon, name: r.name, pct: r.pct, color: r.color }))
+    ));
+  } catch(e) {}
+}
 
 let allocRows = [];
 
-function applyPreset(key, btn) {
-  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('sel'));
-  btn.classList.add('sel');
-  allocRows = PRESETS[key].rows.map((r,i) => ({...r, id: Date.now()+i}));
+function resetToDefault() {
+  if (allocRows.length > 0 && !confirm('Reset to default categories? Your custom changes will be lost.')) return;
+  allocRows = DEFAULT_ROWS.map((r,i) => ({ ...r, id: Date.now()+i, color: COLORS[i % COLORS.length] }));
+  saveRows();
   renderAllocTable();
   recalc();
 }
@@ -870,7 +839,7 @@ function applyPreset(key, btn) {
 function renderAllocTable() {
   const tbody = document.getElementById('alloc-tbody');
   if (allocRows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted);font-size:13px">No categories yet. Add one below or pick a template above.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted);font-size:13px">No categories yet. Add one below.</td></tr>';
     return;
   }
   tbody.innerHTML = allocRows.map(row => `
@@ -884,7 +853,7 @@ function renderAllocTable() {
       <td>
         <div style="display:flex;align-items:center;gap:4px">
           <input type="number" class="alloc-pct-input" value="${row.pct}" min="0" max="100"
-            onchange="updatePct(${row.id}, this.value)" oninput="updatePct(${row.id}, this.value)"/>
+            oninput="updatePctBalanced(${row.id}, this.value)"/>
           <span style="font-size:12px;color:var(--muted)">%</span>
         </div>
       </td>
@@ -903,13 +872,51 @@ function renderAllocTable() {
   `).join('');
 }
 
-function updatePct(id, val) {
+// KEY FEATURE: When user changes one %, auto-adjust the LAST row to keep total = 100%
+function updatePctBalanced(id, val) {
   const row = allocRows.find(r => r.id === id);
-  if (row) { row.pct = parseFloat(val) || 0; recalc(); }
+  if (!row) return;
+  const oldPct = row.pct;
+  const newPct = Math.max(0, Math.min(100, parseFloat(val) || 0));
+  row.pct = newPct;
+
+  // Recalculate total of all OTHER rows
+  const otherRows = allocRows.filter(r => r.id !== id);
+  const otherTotal = otherRows.reduce((s,r) => s + r.pct, 0);
+  const grandTotal = newPct + otherTotal;
+
+  if (grandTotal !== 100 && otherRows.length > 0) {
+    // Find the last row (not this one) to absorb the difference
+    const diff = grandTotal - 100;
+    const lastOther = otherRows[otherRows.length - 1];
+    const adjusted = Math.max(0, lastOther.pct - diff);
+    lastOther.pct = Math.round(adjusted * 10) / 10;
+  }
+
+  saveRows();
+  renderAllocTable();
+  recalc();
 }
 
 function removeRow(id) {
-  allocRows = allocRows.filter(r => r.id !== id);
+  const idx = allocRows.findIndex(r => r.id === id);
+  if (idx === -1) return;
+  const removedPct = allocRows[idx].pct;
+  allocRows.splice(idx, 1);
+
+  // Give removed % to last remaining row to keep total 100
+  if (allocRows.length > 0 && removedPct > 0) {
+    const last = allocRows[allocRows.length - 1];
+    last.pct = Math.min(100, last.pct + removedPct);
+  }
+
+  // Re-normalize if somehow over 100
+  const total = allocRows.reduce((s,r) => s + r.pct, 0);
+  if (total > 100 && allocRows.length > 0) {
+    allocRows[allocRows.length - 1].pct -= (total - 100);
+  }
+
+  saveRows();
   renderAllocTable();
   recalc();
 }
@@ -919,109 +926,85 @@ function addAllocRow() {
   const icon = document.getElementById('new-alloc-icon').value.trim() || '📌';
   const pct  = parseFloat(document.getElementById('new-alloc-pct').value) || 0;
   if (!name) { alert('Please enter a category name'); return; }
-  const colors = ['#C47B0E','#2D8A5A','#3572B8','#6B50C8','#C4507A','#D64545','#1B8C8C'];
-  const color  = colors[allocRows.length % colors.length];
+
+  const color = COLORS[allocRows.length % COLORS.length];
+
+  // Take the pct from the last row to keep total = 100
+  if (pct > 0 && allocRows.length > 0) {
+    const last = allocRows[allocRows.length - 1];
+    last.pct = Math.max(0, last.pct - pct);
+  }
+
   allocRows.push({ id: Date.now(), icon, name, pct, color });
+
+  // Normalize total to exactly 100 after adding
+  const total = allocRows.reduce((s,r) => s + r.pct, 0);
+  if (total !== 100 && allocRows.length > 1) {
+    const diff = 100 - total;
+    allocRows[allocRows.length - 2].pct = Math.max(0, allocRows[allocRows.length - 2].pct + diff);
+  }
+
   document.getElementById('new-alloc-name').value = '';
   document.getElementById('new-alloc-icon').value = '';
   document.getElementById('new-alloc-pct').value  = '';
+
+  saveRows();
   renderAllocTable();
   recalc();
 }
 
 function recalc() {
-  const income = parseFloat(document.getElementById('calc-income').value) || 0;
+  const income   = parseFloat(document.getElementById('calc-income').value) || 0;
   const totalPct = allocRows.reduce((s,r) => s + r.pct, 0);
   const totalAmt = income * totalPct / 100;
   const unalloc  = income - totalAmt;
 
-  // Update each row's amount and bar
   allocRows.forEach(row => {
-    const amt = income * row.pct / 100;
+    const amt   = income * row.pct / 100;
     const amtEl = document.getElementById('amt-' + row.id);
     const barEl = document.getElementById('bar-' + row.id);
     if (amtEl) {
       amtEl.textContent = 'RM ' + amt.toFixed(2);
-      amtEl.className = 'alloc-amount' + (row.pct === 0 ? ' zero' : '');
+      amtEl.className   = 'alloc-amount' + (row.pct === 0 ? ' zero' : '');
     }
     if (barEl) barEl.style.width = Math.min(row.pct, 100) + '%';
   });
 
-  // Total row
   const totalEl = document.getElementById('alloc-total-pct');
   totalEl.textContent = totalPct.toFixed(1) + '%';
-  totalEl.className = 'alloc-total-pct ' + (totalPct > 100 ? 'over' : totalPct === 100 ? 'ok' : 'under');
+  totalEl.className   = 'alloc-total-pct ' + (totalPct > 100 ? 'over' : totalPct === 100 ? 'ok' : 'under');
   document.getElementById('alloc-unallocated').textContent = 'Unallocated: RM ' + Math.max(unalloc, 0).toFixed(2);
 
-  // Summary cards
   document.getElementById('res-income').textContent    = 'RM ' + income.toFixed(2);
   document.getElementById('res-allocated').textContent = 'RM ' + totalAmt.toFixed(2);
   const unallocEl = document.getElementById('res-unalloc');
   unallocEl.textContent = 'RM ' + Math.abs(unalloc).toFixed(2) + (unalloc < 0 ? ' OVER' : '');
   unallocEl.className   = 'calc-result-val ' + (unalloc < 0 ? 'red' : unalloc === 0 ? 'green' : 'honey');
 
-  // Message
   const msgEl = document.getElementById('calc-msg');
-  if (income === 0) {
-    msgEl.className = 'calc-msg'; return;
-  }
+  if (income === 0) { msgEl.className = 'calc-msg'; return; }
   if (totalPct > 100) {
-    msgEl.textContent = '⚠️ Your allocations exceed 100%! Reduce some categories by ' + (totalPct-100).toFixed(1) + '%.';
+    msgEl.textContent = '⚠️ Total exceeds 100%! Please reduce some categories.';
     msgEl.className = 'calc-msg show warn';
   } else if (totalPct === 100) {
-    msgEl.textContent = '✅ Perfect! Your income is fully allocated with nothing left over.';
+    msgEl.textContent = '✅ Perfect! Your income is fully allocated.';
     msgEl.className = 'calc-msg show ok';
   } else {
-    msgEl.textContent = '💡 You have RM ' + unalloc.toFixed(2) + ' (' + (100-totalPct).toFixed(1) + '%) unallocated. Consider adding it to savings!';
+    msgEl.textContent = '💡 RM ' + unalloc.toFixed(2) + ' (' + (100-totalPct).toFixed(1) + '%) is unallocated. Add it to savings!';
     msgEl.className = 'calc-msg show info';
   }
 }
 
-// ── Edit modal ───────────────────────────────────────
-let editingId = null;
-
-function openEdit(id, desc, amount, type, date) {
-  editingId = id;
-  document.getElementById('edit-desc').value   = desc;
-  document.getElementById('edit-amount').value = amount;
-  document.getElementById('edit-type').value   = type;
-  document.getElementById('edit-date').value   = date;
-  document.getElementById('edit-modal').classList.add('open');
+// ── Init ──────────────────────────────────────────────
+// Load saved rows from localStorage, or use default
+const saved = loadSavedRows();
+if (saved && saved.length > 0) {
+  allocRows = saved.map((r,i) => ({ ...r, id: Date.now()+i }));
+} else {
+  allocRows = DEFAULT_ROWS.map((r,i) => ({ ...r, id: Date.now()+i, color: COLORS[i % COLORS.length] }));
 }
-
-function closeModal() {
-  document.getElementById('edit-modal').classList.remove('open');
-  editingId = null;
-}
-
-async function saveEdit() {
-  const desc   = document.getElementById('edit-desc').value.trim();
-  const amount = document.getElementById('edit-amount').value;
-  const type   = document.getElementById('edit-type').value;
-  const date   = document.getElementById('edit-date').value;
-
-  if (!desc || !amount || !date) { showAlert('Please fill in all fields!', 'warn'); return; }
-
-  const res = await fetch(`/api/income/edit/${editingId}`, {
-    method: 'PUT',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ description: desc, amount: parseFloat(amount), income_type: type, date })
-  });
-
-  if (res.ok) {
-    closeModal();
-    showAlert('Income updated!', 'ok');
-    loadIncome();
-  }
-}
-
-document.getElementById('edit-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
-});
-
-// Init with balanced preset
-applyPreset('balanced', document.querySelector('.preset-btn.sel'));
+renderAllocTable();
+recalc();
 
 // ── Init ──────────────────────────────────────────────
 loadIncome();

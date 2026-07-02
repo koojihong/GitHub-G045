@@ -781,43 +781,12 @@ body {
     <div class="metrics" id="metrics-grid"></div>
 
     <!-- ROW 1: spending chart + budget ring -->
-    <div class="grid-3">
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">Monthly Spending Trend</div>
-          <span class="panel-tag" id="trend-month-tag"></span>
-        </div>
-        <div class="chart-wrap-tall"><canvas id="trendChart"></canvas></div>
+    <div class="panel" style="flex-shrink:0;margin-bottom:10px;">
+      <div class="panel-header">
+        <div class="panel-title">Monthly Spending Trend</div>
+        <span class="panel-tag" id="trend-month-tag"></span>
       </div>
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">Budget Usage</div>
-        </div>
-        <div class="budget-meter" id="budget-meter-wrap">
-          <div class="budget-ring">
-            <canvas id="ringChart" width="110" height="110"></canvas>
-            <div class="budget-center">
-              <div class="budget-pct-num" id="ring-pct">0%</div>
-              <div class="budget-pct-lbl">used</div>
-            </div>
-          </div>
-        </div>
-        <div class="budget-empty" id="budget-empty-state" style="display:none;text-align:center;padding:10px 8px;flex:1;display:none;flex-direction:column;justify-content:center;">
-          <div style="font-size:26px;margin-bottom:4px;">🎯</div>
-          <div style="font-size:11px;color:var(--dark);font-weight:600;margin-bottom:8px;">No budget set yet</div>
-          <form id="quick-budget-form" style="display:flex;gap:6px;justify-content:center;align-items:center;">
-            <span style="font-size:11px;color:var(--muted);">RM</span>
-            <input type="number" id="quick-budget-input" min="0" step="0.01" placeholder="0.00" required
-              style="width:80px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--dark);outline:none;">
-            <button type="submit" style="padding:6px 12px;background:var(--honey);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;">Save</button>
-          </form>
-        </div>
-        <div class="budget-stats" id="budget-stats-row">
-          <div><div class="bstat-label">Spent</div><div class="bstat-value" id="b-spent" style="color:var(--red)">—</div></div>
-          <div style="text-align:center"><div class="bstat-label">Limit</div><div class="bstat-value" id="b-limit" data-budget="{{ budget or 0 }}" style="color:var(--honey)">—</div></div>
-          <div style="text-align:right"><div class="bstat-label">Left</div><div class="bstat-value" id="b-left" style="color:var(--green)">—</div></div>
-        </div>
-      </div>
+      <div class="chart-wrap-tall"><canvas id="trendChart"></canvas></div>
     </div>
 
     <!-- ROW 2: categories + recent transactions -->
@@ -851,33 +820,12 @@ body {
     <div class="metrics" id="overall-metrics-grid"></div>
 
     <!-- ROW 1: monthly spend trend + savings progress -->
-    <div class="grid-3">
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">Spending by Month</div>
-          <span class="panel-tag">All months</span>
-        </div>
-        <div class="chart-wrap-tall"><canvas id="overallTrendChart"></canvas></div>
+    <div class="panel" style="flex-shrink:0;margin-bottom:10px;">
+      <div class="panel-header">
+        <div class="panel-title">Spending by Month</div>
+        <span class="panel-tag">All months</span>
       </div>
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">Savings Progress</div>
-        </div>
-        <div class="budget-meter">
-          <div class="budget-ring">
-            <canvas id="overallRingChart" width="110" height="110"></canvas>
-            <div class="budget-center">
-              <div class="budget-pct-num" id="ov-ring-pct">0%</div>
-              <div class="budget-pct-lbl">saved</div>
-            </div>
-          </div>
-        </div>
-        <div class="budget-stats">
-          <div><div class="bstat-label">Saved</div><div class="bstat-value" id="ov-saved" style="color:var(--purple)">—</div></div>
-          <div style="text-align:center"><div class="bstat-label">Target</div><div class="bstat-value" id="ov-target" style="color:var(--honey)">—</div></div>
-          <div style="text-align:right"><div class="bstat-label">Left</div><div class="bstat-value" id="ov-left" style="color:var(--green)">—</div></div>
-        </div>
-      </div>
+      <div class="chart-wrap-tall"><canvas id="overallTrendChart"></canvas></div>
     </div>
 
     <!-- ROW 2: overall categories + savings goals overview -->
