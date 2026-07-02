@@ -342,11 +342,6 @@ tbody tr:hover { background: #fffaf0; }
       <div class="metric-value" id="m-count">0</div>
     </div>
     <div class="metric-card">
-      <div class="metric-icon" style="background:#FDF3DC">📈</div>
-      <div class="metric-label">Biggest Expense</div>
-      <div class="metric-value honey" id="m-biggest">RM 0.00</div>
-    </div>
-    <div class="metric-card">
       <div class="metric-icon" style="background:#EDFDF5">📊</div>
       <div class="metric-label">Daily Average</div>
       <div class="metric-value green" id="m-avg">RM 0.00</div>
@@ -385,6 +380,26 @@ tbody tr:hover { background: #fffaf0; }
       <div class="form-group">
         <label>&nbsp;</label>
         <button class="btn-add" onclick="addExpense()">+ Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPENDING DISTRIBUTION PANEL -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">💰 Spending Distribution</div>
+      <span class="panel-tag" id="dist-month-tag"></span>
+    </div>
+    <div style="display:flex;gap:32px;align-items:center;flex-wrap:wrap;">
+      <div style="position:relative;width:180px;height:180px;flex-shrink:0;">
+        <canvas id="dist-chart" width="180" height="180"></canvas>
+        <div id="dist-center" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+          <div style="font-size:11px;color:var(--muted);font-weight:500;letter-spacing:.05em">TOTAL</div>
+          <div id="dist-total" style="font-size:16px;font-weight:700;color:var(--dark)">RM 0.00</div>
+        </div>
+      </div>
+      <div id="dist-legend" style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:10px;">
+        <div style="color:var(--muted);font-size:13px;">No expenses yet this month.</div>
       </div>
     </div>
   </div>
@@ -518,15 +533,88 @@ async function loadExpenses() {
 
 // ── Update summary cards ─────────────────────────────
 function updateSummary(data) {
-  const total   = data.reduce((s, e) => s + e.amount, 0);
-  const biggest = data.length ? Math.max(...data.map(e => e.amount)) : 0;
-  const avg     = data.length ? total / new Date(today.getFullYear(), today.getMonth()+1, 0).getDate() : 0;
+  const total = data.reduce((s, e) => s + e.amount, 0);
+  const avg   = data.length ? total / new Date(today.getFullYear(), today.getMonth()+1, 0).getDate() : 0;
 
   document.getElementById('m-spent').textContent   = `RM ${total.toFixed(2)}`;
   document.getElementById('m-count').textContent   = data.length;
-  document.getElementById('m-biggest').textContent = `RM ${biggest.toFixed(2)}`;
   document.getElementById('m-avg').textContent     = `RM ${avg.toFixed(2)}`;
   document.getElementById('table-tag').textContent = `${data.length} record${data.length !== 1 ? 's' : ''}`;
+
+  // month label for distribution panel
+  const [yr, mo] = picker.value.split('-');
+  document.getElementById('dist-month-tag').textContent =
+    new Date(yr, mo - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+
+  renderDistribution(data);
+}
+
+// ── Spending distribution donut chart ─────────────────
+const CAT_COLORS = {
+  Food: '#D4870A', Transport: '#3B82F6', Shopping: '#8B5CF6',
+  Bills: '#F59E0B', Health: '#10B981', Other: '#6B7280'
+};
+
+let distChartInstance = null;
+
+function renderDistribution(data) {
+  const canvas = document.getElementById('dist-chart');
+  const legend = document.getElementById('dist-legend');
+  const totalEl = document.getElementById('dist-total');
+  const ctx = canvas.getContext('2d');
+
+  // Aggregate by category
+  const totals = {};
+  data.forEach(e => { totals[e.category] = (totals[e.category] || 0) + e.amount; });
+  const cats = Object.keys(totals);
+  const total = data.reduce((s, e) => s + e.amount, 0);
+  totalEl.textContent = `RM ${total.toFixed(2)}`;
+
+  if (cats.length === 0) {
+    // Draw empty grey ring
+    ctx.clearRect(0, 0, 180, 180);
+    ctx.beginPath();
+    ctx.arc(90, 90, 70, 0, Math.PI * 2);
+    ctx.strokeStyle = '#EDE8DC';
+    ctx.lineWidth = 28;
+    ctx.stroke();
+    legend.innerHTML = `<div style="color:var(--muted);font-size:13px;">No expenses yet this month.</div>`;
+    return;
+  }
+
+  // Draw donut
+  ctx.clearRect(0, 0, 180, 180);
+  let startAngle = -Math.PI / 2;
+  const gap = 0.03;
+  cats.forEach(cat => {
+    const slice = (totals[cat] / total) * (Math.PI * 2 - gap * cats.length);
+    ctx.beginPath();
+    ctx.moveTo(90, 90);
+    ctx.arc(90, 90, 70, startAngle, startAngle + slice);
+    ctx.closePath();
+    ctx.fillStyle = CAT_COLORS[cat] || '#9CA3AF';
+    ctx.fill();
+    startAngle += slice + gap;
+  });
+  // Punch hole
+  ctx.beginPath();
+  ctx.arc(90, 90, 42, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+
+  // Legend
+  legend.innerHTML = cats
+    .sort((a, b) => totals[b] - totals[a])
+    .map(cat => {
+      const pct = ((totals[cat] / total) * 100).toFixed(1);
+      return `
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:12px;height:12px;border-radius:3px;background:${CAT_COLORS[cat] || '#9CA3AF'};flex-shrink:0;"></div>
+          <div style="flex:1;font-size:13px;color:var(--dark);font-weight:500;">${cat}</div>
+          <div style="font-size:12px;color:var(--muted);">${pct}%</div>
+          <div style="font-size:13px;font-weight:600;color:var(--dark);min-width:70px;text-align:right;">RM ${totals[cat].toFixed(2)}</div>
+        </div>`;
+    }).join('');
 }
 
 // ── Add expense ──────────────────────────────────────
