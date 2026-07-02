@@ -1,711 +1,490 @@
-from flask import Flask, redirect, url_for, render_template, request, session, flash
-from datetime import timedelta
-import sqlite3, hashlib, secrets, datetime
+from flask import Flask, redirect, url_for, render_template, request, session, jsonify, flash
+from database import db, User, Expense, Income, SavingsGoal
+from auth import auth, bcrypt
+from datetime import datetime
 from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = "budgetbee-secret-key-2025"
-app.permanent_session_lifetime = timedelta(minutes=30)
 
-DB = "users.db"
+# ── Config ────────────────────────────────────────────
+app.config['SECRET_KEY']                     = 'budgetbee-secret-2025'
+app.config['SQLALCHEMY_DATABASE_URI']        = 'sqlite:///budgetbee.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# ── DATABASE ──────────────────────────────────────────────────────────────
-def get_db():
-    conn = sqlite3.connect(DB)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+# ── Init ──────────────────────────────────────────────
+db.init_app(app)
+bcrypt.init_app(app)
+app.register_blueprint(auth)
 
-def init_db():
-    db = get_db()
-    db.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            username   TEXT    NOT NULL UNIQUE,
-            email      TEXT    NOT NULL UNIQUE,
-            password   TEXT    NOT NULL,
-            created_at TEXT    DEFAULT (datetime('now'))
-        )
-    """)
-    db.execute("""
-        CREATE TABLE IF NOT EXISTS password_resets (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id    INTEGER NOT NULL,
-            token      TEXT    NOT NULL UNIQUE,
-            expires_at TEXT    NOT NULL,
-            used       INTEGER DEFAULT 0,
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        )
-    """)
-    db.execute("""
-        CREATE TABLE IF NOT EXISTS expenses (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id     INTEGER NOT NULL,
-            description TEXT    NOT NULL,
-            category    TEXT    DEFAULT 'others',
-            amount      REAL    NOT NULL,
-            date        TEXT    DEFAULT (date('now')),
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    """)
-    db.execute("""
-        CREATE TABLE IF NOT EXISTS budget (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id     INTEGER NOT NULL,
-            month       TEXT    NOT NULL,
-            budget      REAL    NOT NULL,
-            alert_pct   INTEGER DEFAULT 70,
-            UNIQUE(user_id, month),
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    """)
-    db.execute("""
-        CREATE TABLE IF NOT EXISTS savings (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id     INTEGER NOT NULL,
-            goal_name   TEXT    NOT NULL,
-            target      REAL    NOT NULL,
-            saved       REAL    DEFAULT 0,
-            target_date TEXT,
-            created_at  TEXT    DEFAULT (date('now')),
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    """)
-    db.execute("""
-        CREATE TABLE IF NOT EXISTS income (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id     INTEGER NOT NULL,
-            description TEXT    NOT NULL,
-            amount      REAL    NOT NULL,
-            type        TEXT    DEFAULT 'salary',
-            date        TEXT    DEFAULT (date('now')),
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    """)
-    db.commit()
-    db.close()
-
-def hash_pw(password):
-    return hashlib.sha256(password.encode()).hexdigest()
-
+# ── Auth guard ────────────────────────────────────────
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if "user_id" not in session:
-            flash("Please log in to access that page.", "error")
-            return redirect(url_for("login"))
+        if 'user_id' not in session:
+            flash('Please log in to access that page.', 'error')
+            return redirect(url_for('auth.login'))
         return f(*args, **kwargs)
     return decorated
 
+# Helper: common session vars for templates
 def sv():
-    return {"username": session.get("username",""), "email": session.get("email","")}
+    return {'username': session.get('username', ''), 'email': session.get('email', '')}
 
-# ── ROUTES ────────────────────────────────────────────────────────────────
-
-@app.route("/")
+# ── Page Routes ───────────────────────────────────────
+@app.route('/')
 def home():
-    return redirect(url_for("dashboard") if "user_id" in session else url_for("login"))
+    return redirect(url_for('auth.login'))
 
+@app.route('/terms')
+def terms():
+    return render_template('terms.html')
 
-# ── AUTH ──────────────────────────────────────────────────────────────────
+@app.route('/privacy')
+def privacy():
+    return render_template('privacy.html')
 
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if "user_id" in session:
-        return redirect(url_for("dashboard"))
-    if request.method == "POST":
-        email    = request.form.get("email", "").strip()
-        password = request.form.get("password", "")
-        if not email or not password:
-            flash("Please fill in all fields.", "error")
-        else:
-            db   = get_db()
-            user = db.execute(
-                "SELECT * FROM users WHERE email=? AND password=?",
-                (email, hash_pw(password))
-            ).fetchone()
-            db.close()
-            if user:
-                session.permanent   = True
-                session["user_id"]  = user["id"]
-                session["username"] = user["username"]
-                session["email"]    = user["email"]
-                flash(f"Welcome back, {user['username']}! 👋", "success")
-                return redirect(url_for("dashboard"))
-            flash("Invalid email or password.", "error")
-    return render_template("login.html")
+# ── Setup Page ────────────────────────────────────────
+@app.route('/setup', methods=['GET', 'POST'])
+@login_required
+def setup():
+    user = User.query.get(session['user_id'])
 
+    if user.income is not None:
+        return redirect('/dashboard')
 
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if "user_id" in session:
-        return redirect(url_for("dashboard"))
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        email    = request.form.get("email", "").strip()
-        password = request.form.get("password", "")
-        confirm  = request.form.get("confirm", "")
-        if not all([username, email, password, confirm]):
-            flash("Please fill in all fields.", "error")
-        elif len(username) < 3:
-            flash("Username must be at least 3 characters.", "error")
-        elif "@" not in email:
-            flash("Please enter a valid email.", "error")
-        elif len(password) < 6:
-            flash("Password must be at least 6 characters.", "error")
-        elif password != confirm:
-            flash("Passwords do not match.", "error")
-        else:
-            db = get_db()
-            try:
-                cur = db.execute(
-                    "INSERT INTO users (username, email, password) VALUES (?,?,?)",
-                    (username, email, hash_pw(password))
-                )
-                db.commit()
-                new_id = cur.lastrowid
-                db.close()
-                session.permanent   = True
-                session["user_id"]  = new_id
-                session["username"] = username
-                session["email"]    = email
-                flash(f"Account created! Welcome, {username}! 🎉", "success")
-                return redirect(url_for("dashboard"))
-            except sqlite3.IntegrityError:
-                db.close()
-                flash("Username or email already registered.", "error")
-    return render_template("register.html")
+    if request.method == 'POST':
+        user.income       = float(request.form.get('income'))
+        user.budget_limit = float(request.form.get('budget_limit'))
+        db.session.commit()
+        return redirect('/dashboard')
 
+    return render_template('setup.html', username=session['username'])
 
-@app.route("/logout")
-def logout():
-    name = session.get("username", "")
-    session.clear()
-    flash(f"You've been signed out. See you soon, {name}!", "success")
-    return redirect(url_for("login"))
-
-
-# ── MAIN PAGES ────────────────────────────────────────────────────────────
-
-@app.route("/dashboard")
+# ── Dashboard ─────────────────────────────────────────
+@app.route('/dashboard')
 @login_required
 def dashboard():
-    uid   = session["user_id"]
-    db    = get_db()
-    month = datetime.date.today().strftime("%Y-%m")
+    uid   = session['user_id']
+    month = datetime.today().strftime('%Y-%m')
 
-    total = db.execute(
-        "SELECT COALESCE(SUM(amount),0) AS t FROM expenses WHERE user_id=? AND date LIKE ?",
-        (uid, f"{month}%")
-    ).fetchone()["t"]
+    expenses     = Expense.query.filter_by(user_id=uid).all()
+    incomes      = Income.query.filter_by(user_id=uid).all()
+    savings      = SavingsGoal.query.filter_by(user_id=uid).all()
 
-    income_total = db.execute(
-        "SELECT COALESCE(SUM(amount),0) AS t FROM income WHERE user_id=? AND date LIKE ?",
-        (uid, f"{month}%")
-    ).fetchone()["t"]
+    # Monthly totals
+    total_spent  = sum(
+        e.amount for e in expenses
+        if e.date.strftime('%Y-%m') == month
+    )
+    income_total = sum(
+        i.amount for i in incomes
+        if i.date.strftime('%Y-%m') == month
+    )
 
-    bud = db.execute(
-        "SELECT budget FROM budget WHERE user_id=? AND month=?", (uid, month)
-    ).fetchone()
+    recent = sorted(expenses, key=lambda e: e.date, reverse=True)[:5]
 
-    recent  = db.execute(
-        "SELECT * FROM expenses WHERE user_id=? ORDER BY date DESC LIMIT 5", (uid,)
-    ).fetchall()
+    user = User.query.get(uid)
+    budget = user.budget_limit
 
-    savings = db.execute(
-        "SELECT * FROM savings WHERE user_id=?", (uid,)
-    ).fetchall()
-
-    db.close()
-    return render_template("dashboard.html", **sv(),
-                           total_spent=total,
+    return render_template('dashboard.html', **sv(),
+                           total_spent=total_spent,
                            income_total=income_total,
-                           budget=bud["budget"] if bud else None,
+                           budget=budget,
                            recent=recent,
                            savings=savings)
 
-
-@app.route("/expenses", methods=["GET", "POST"])
+# ── Expenses Page ─────────────────────────────────────
+@app.route('/expenses')
 @login_required
-def expenses():
-    uid = session["user_id"]
-    db  = get_db()
+def expenses_page():
+    return render_template('expenses.html', username=session['username'])
 
-    if request.method == "POST":
-        desc     = request.form.get("description", "").strip()
-        category = request.form.get("category", "others")
-        amount   = request.form.get("amount", "")
-        date     = request.form.get("date", datetime.date.today().isoformat())
-        if not desc or not amount:
-            flash("Description and amount are required.", "error")
-        else:
-            db.execute(
-                "INSERT INTO expenses (user_id,description,category,amount,date) VALUES (?,?,?,?,?)",
-                (uid, desc, category, float(amount), date)
-            )
-            db.commit()
-            flash(f"Expense '{desc}' added successfully! 💸", "success")
-
-    month = request.args.get("month", datetime.date.today().strftime("%Y-%m"))
-    rows  = db.execute(
-        "SELECT * FROM expenses WHERE user_id=? AND date LIKE ? ORDER BY date DESC",
-        (uid, f"{month}%")
-    ).fetchall()
-    total = sum(r["amount"] for r in rows)
-    db.close()
-
-    return render_template("expenses.html", **sv(),
-                           expenses=rows, total=total, month=month)
-
-
-@app.route("/budget", methods=["GET", "POST"])
+# ── Get Expenses (filter by month) ────────────────────
+@app.route('/api/expenses')
 @login_required
-def budget():
-    uid = session["user_id"]
-    db  = get_db()
+def get_expenses():
+    month = request.args.get('month')
+    year  = request.args.get('year')
 
-    if request.method == "POST":
-        amount    = request.form.get("budget", "")
-        month     = request.form.get("month", "")
-        alert_pct = request.form.get("alert_pct", 70)
-        if not amount or not month:
-            flash("Budget amount and month are required.", "error")
-        else:
-            db.execute(
-                """INSERT INTO budget (user_id,month,budget,alert_pct) VALUES (?,?,?,?)
-                   ON CONFLICT(user_id,month) DO UPDATE SET
-                   budget=excluded.budget, alert_pct=excluded.alert_pct""",
-                (uid, month, float(amount), int(alert_pct))
-            )
-            db.commit()
-            flash(f"Budget of RM {float(amount):.2f} set for {month}! 🎯", "success")
+    query = Expense.query.filter_by(user_id=session['user_id'])
 
-    budgets  = db.execute(
-        "SELECT * FROM budget WHERE user_id=? ORDER BY month DESC", (uid,)
-    ).fetchall()
-    spending = db.execute(
-        "SELECT strftime('%Y-%m',date) AS month, SUM(amount) AS total FROM expenses WHERE user_id=? GROUP BY month",
-        (uid,)
-    ).fetchall()
-    spending_map = {r["month"]: r["total"] for r in spending}
-    db.close()
+    if month and year:
+        query = query.filter(
+            db.extract('month', Expense.date) == int(month),
+            db.extract('year',  Expense.date) == int(year)
+        )
 
-    return render_template("budget.html", **sv(),
-                           budgets=budgets, spending=spending_map)
+    expenses = query.order_by(Expense.date.desc()).all()
 
+    exp_list = [{
+        'id':          e.id,
+        'description': e.description,
+        'amount':      e.amount,
+        'category':    e.category,
+        'date':        e.date.strftime('%Y-%m-%d')
+    } for e in expenses]
 
-@app.route("/savings", methods=["GET", "POST"])
+    return jsonify({
+        'expenses': exp_list,
+        'total':    round(sum(e.amount for e in expenses), 2)
+    })
+
+# ── Add New Expense ────────────────────────────────────
+@app.route('/api/expenses/add', methods=['POST'])
 @login_required
-def savings():
-    uid = session["user_id"]
-    db  = get_db()
+def add_expense():
+    data = request.get_json()
 
-    if request.method == "POST":
-        goal_name   = request.form.get("goal_name", "").strip()
-        target      = request.form.get("target", "")
-        target_date = request.form.get("target_date") or None
-        if not goal_name or not target:
-            flash("Goal name and target amount are required.", "error")
-        else:
-            db.execute(
-                "INSERT INTO savings (user_id,goal_name,target,target_date) VALUES (?,?,?,?)",
-                (uid, goal_name, float(target), target_date)
-            )
-            db.commit()
-            flash(f"Savings goal '{goal_name}' created! 🐷", "success")
+    desc     = (data.get('description') or '').strip()
+    amount   = data.get('amount', 0)
+    category = data.get('category', 'others')
+    date_str = data.get('date', datetime.today().isoformat()[:10])
 
-    goals = db.execute(
-        "SELECT * FROM savings WHERE user_id=? ORDER BY created_at DESC", (uid,)
-    ).fetchall()
-    db.close()
+    if not desc or not amount:
+        return jsonify({'error': 'Description and amount are required'}), 400
 
-    return render_template("savings.html", **sv(), goals=goals)
+    new_expense = Expense(
+        user_id     = session['user_id'],
+        description = desc,
+        amount      = float(amount),
+        category    = category,
+        date        = datetime.strptime(date_str, '%Y-%m-%d')
+    )
+    db.session.add(new_expense)
+    db.session.commit()
+    return jsonify({
+        'id': new_expense.id, 'description': desc,
+        'category': category, 'amount': float(amount), 'date': date_str
+    }), 201
 
-
-# ── PROFILE ───────────────────────────────────────────────────────────────
-
-@app.route("/profile")
+# ── Delete Expense ─────────────────────────────────────
+@app.route('/api/expenses/delete/<int:expense_id>', methods=['DELETE'])
 @login_required
-def profile():
-    uid = session["user_id"]
-    db  = get_db()
-    user = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
-    db.close()
-    return render_template("profile.html", **sv(), user=user)
+def delete_expense(expense_id):
+    expense = Expense.query.filter_by(id=expense_id, user_id=session['user_id']).first()
+    if not expense:
+        return jsonify({'error': 'Not found'}), 404
 
+    db.session.delete(expense)
+    db.session.commit()
+    return jsonify({'deleted': expense_id})
 
-@app.route("/profile/update", methods=["POST"])
+# ── Edit Expense ───────────────────────────────────────
+@app.route('/api/expenses/edit/<int:expense_id>', methods=['PUT'])
+@login_required
+def edit_expense(expense_id):
+    expense = Expense.query.filter_by(id=expense_id, user_id=session['user_id']).first()
+    if not expense:
+        return jsonify({'error': 'Not found'}), 404
+
+    data = request.get_json()
+    expense.description = data.get('description', expense.description)
+    expense.amount      = float(data.get('amount', expense.amount))
+    expense.category    = data.get('category', expense.category)
+    expense.date        = datetime.strptime(data['date'], '%Y-%m-%d')
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
+# ── Update Income & Budget ─────────────────────────────
+@app.route('/api/update-settings', methods=['POST'])
+@login_required
+def update_settings():
+    data = request.get_json()
+    user = User.query.get(session['user_id'])
+    user.income       = float(data['income'])
+    user.budget_limit = float(data['budget_limit'])
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
+# ── Get Budget Data ────────────────────────────────────
+@app.route('/api/data')
+@login_required
+def get_data():
+    user        = User.query.get(session['user_id'])
+    expenses    = Expense.query.filter_by(user_id=session['user_id']).all()
+    incomes     = Income.query.filter_by(user_id=session['user_id']).all()
+
+    total_spent  = sum(e.amount for e in expenses)
+    total_income = sum(i.amount for i in incomes)
+
+    if total_income == 0:
+        total_income = user.income or 0
+
+    return jsonify({
+        'income':  total_income,
+        'spent':   total_spent,
+        'balance': total_income - total_spent,
+        'limit':   user.budget_limit,
+    })
+
+# ── Income Page ───────────────────────────────────────
+@app.route('/income')
+@login_required
+def income_page():
+    return render_template('income.html', **sv())
+
+# ── Get Income (filter by month) ──────────────────────
+@app.route('/api/income')
+@login_required
+def get_income():
+    month = request.args.get('month')
+    year  = request.args.get('year')
+
+    query = Income.query.filter_by(user_id=session['user_id'])
+
+    if month and year:
+        query = query.filter(
+            db.extract('month', Income.date) == int(month),
+            db.extract('year',  Income.date) == int(year)
+        )
+
+    incomes = query.order_by(Income.date.desc()).all()
+
+    return jsonify({
+        'income': [{
+            'id':          i.id,
+            'description': i.description,
+            'amount':      i.amount,
+            'income_type': i.income_type,
+            'date':        i.date.strftime('%Y-%m-%d')
+        } for i in incomes],
+        'total': round(sum(i.amount for i in incomes), 2)
+    })
+
+# ── Add Income ────────────────────────────────────────
+@app.route('/api/income/add', methods=['POST'])
+@login_required
+def add_income():
+    data = request.get_json()
+
+    desc        = (data.get('description') or '').strip()
+    amount      = data.get('amount', 0)
+    income_type = data.get('income_type', 'salary')
+    date_str    = data.get('date', datetime.today().isoformat()[:10])
+
+    if not desc or not amount:
+        return jsonify({'error': 'Description and amount are required'}), 400
+
+    new_income = Income(
+        user_id     = session['user_id'],
+        description = desc,
+        amount      = float(amount),
+        income_type = income_type,
+        date        = datetime.strptime(date_str, '%Y-%m-%d')
+    )
+    db.session.add(new_income)
+    db.session.commit()
+    return jsonify({
+        'id': new_income.id, 'description': desc,
+        'amount': float(amount), 'income_type': income_type, 'date': date_str
+    }), 201
+
+# ── Delete Income ─────────────────────────────────────
+@app.route('/api/income/delete/<int:income_id>', methods=['DELETE'])
+@login_required
+def delete_income(income_id):
+    income = Income.query.filter_by(id=income_id, user_id=session['user_id']).first()
+    if not income:
+        return jsonify({'error': 'Not found'}), 404
+
+    db.session.delete(income)
+    db.session.commit()
+    return jsonify({'deleted': income_id})
+
+# ── Edit Income ────────────────────────────────────────
+@app.route('/api/income/edit/<int:income_id>', methods=['PUT'])
+@login_required
+def edit_income(income_id):
+    income = Income.query.filter_by(id=income_id, user_id=session['user_id']).first()
+    if not income:
+        return jsonify({'error': 'Not found'}), 404
+
+    data = request.get_json()
+    income.description = data.get('description', income.description)
+    income.amount      = float(data.get('amount', income.amount))
+    income.income_type = data.get('income_type', income.income_type)
+    income.date        = datetime.strptime(data['date'], '%Y-%m-%d')
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
+# ── Profile Page ──────────────────────────────────────
+@app.route('/profile')
+@login_required
+def profile_page():
+    user = User.query.get(session['user_id'])
+    return render_template('profile.html', **sv(), user=user)
+
+# ── Update Profile ────────────────────────────────────
+@app.route('/profile/update', methods=['POST'])
 @login_required
 def profile_update():
-    uid      = session["user_id"]
-    username = request.form.get("username", "").strip()
-    email    = request.form.get("email", "").strip()
+    username = request.form.get('username', '').strip()
+    email    = request.form.get('email', '').strip()
 
     if not username or not email:
-        flash("Username and email cannot be empty.", "error")
-        return redirect(url_for("profile"))
+        flash('Username and email cannot be empty.', 'error')
+        return redirect(url_for('profile_page'))
     if len(username) < 3:
-        flash("Username must be at least 3 characters.", "error")
-        return redirect(url_for("profile"))
-    if "@" not in email:
-        flash("Please enter a valid email.", "error")
-        return redirect(url_for("profile"))
+        flash('Username must be at least 3 characters.', 'error')
+        return redirect(url_for('profile_page'))
+    if '@' not in email:
+        flash('Please enter a valid email.', 'error')
+        return redirect(url_for('profile_page'))
 
-    db = get_db()
+    user = User.query.get(session['user_id'])
     try:
-        db.execute(
-            "UPDATE users SET username=?, email=? WHERE id=?",
-            (username, email, uid)
-        )
-        db.commit()
-        # Update session so nav shows the new name immediately
-        session["username"] = username
-        session["email"]    = email
-        flash("Profile updated successfully! ✅", "success")
-    except sqlite3.IntegrityError:
-        flash("That username or email is already taken.", "error")
-    finally:
-        db.close()
+        user.username = username
+        user.email    = email
+        db.session.commit()
+        session['username'] = username
+        session['email']    = email
+        flash('Profile updated successfully! ✅', 'success')
+    except Exception:
+        db.session.rollback()
+        flash('That username or email is already taken.', 'error')
 
-    return redirect(url_for("profile"))
+    return redirect(url_for('profile_page'))
 
-
-@app.route("/profile/password", methods=["POST"])
+# ── Change Password ───────────────────────────────────
+@app.route('/profile/password', methods=['POST'])
 @login_required
 def profile_password():
-    uid              = session["user_id"]
-    current_password = request.form.get("current_password", "")
-    new_password     = request.form.get("new_password", "")
-    confirm_password = request.form.get("confirm_password", "")
+    current_password = request.form.get('current_password', '')
+    new_password     = request.form.get('new_password', '')
+    confirm_password = request.form.get('confirm_password', '')
 
-    db   = get_db()
-    user = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+    user = User.query.get(session['user_id'])
 
-    if user["password"] != hash_pw(current_password):
-        db.close()
-        flash("Current password is incorrect.", "error")
-        return redirect(url_for("profile"))
+    if not bcrypt.check_password_hash(user.password, current_password):
+        flash('Current password is incorrect.', 'error')
+        return redirect(url_for('profile_page'))
     if len(new_password) < 6:
-        db.close()
-        flash("New password must be at least 6 characters.", "error")
-        return redirect(url_for("profile"))
+        flash('New password must be at least 6 characters.', 'error')
+        return redirect(url_for('profile_page'))
     if new_password != confirm_password:
-        db.close()
-        flash("New passwords do not match.", "error")
-        return redirect(url_for("profile"))
+        flash('New passwords do not match.', 'error')
+        return redirect(url_for('profile_page'))
 
-    db.execute("UPDATE users SET password=? WHERE id=?", (hash_pw(new_password), uid))
-    db.commit()
-    db.close()
-    flash("Password changed successfully! 🔒", "success")
-    return redirect(url_for("profile"))
+    user.password = bcrypt.generate_password_hash(new_password).decode('utf-8')
+    db.session.commit()
+    flash('Password changed successfully! 🔒', 'success')
+    return redirect(url_for('profile_page'))
 
-
-@app.route("/profile/delete", methods=["POST"])
+# ── Delete Account ────────────────────────────────────
+@app.route('/profile/delete', methods=['POST'])
 @login_required
 def profile_delete():
-    uid = session["user_id"]
-    db  = get_db()
-    db.execute("DELETE FROM users WHERE id=?", (uid,))
-    db.commit()
-    db.close()
+    user = User.query.get(session['user_id'])
+    db.session.delete(user)
+    db.session.commit()
     session.clear()
-    flash("Your account has been permanently deleted.", "success")
-    return redirect(url_for("login"))
+    flash('Your account has been permanently deleted.', 'success')
+    return redirect(url_for('auth.login'))
 
-
-# ── PASSWORD RESET ────────────────────────────────────────────────────────
-
-@app.route("/forgot-password", methods=["GET", "POST"])
+# ── Forgot Password Page ──────────────────────────────
+@app.route('/forgot-password')
 def forgot_password():
-    if request.method == "POST":
-        email = request.form.get("email", "").strip()
-        if not email or "@" not in email:
-            flash("Please enter a valid email address.", "error")
-        else:
-            db   = get_db()
-            user = db.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
-            if user:
-                token   = secrets.token_urlsafe(32)
-                expires = (datetime.datetime.now() + datetime.timedelta(hours=1)).isoformat()
-                db.execute(
-                    "INSERT INTO password_resets (user_id,token,expires_at) VALUES (?,?,?)",
-                    (user["id"], token, expires)
-                )
-                db.commit()
-                reset_url = url_for("reset_password", token=token, _external=True)
-                db.close()
-                # In production: send email. For demo, pass URL to template.
-                return render_template("forgot_password.html", sent=reset_url)
-            db.close()
-            # Don't reveal if email exists — always show success
-            return render_template("forgot_password.html", sent="not_found")
-    return render_template("forgot_password.html", sent=None)
+    return render_template('forgot_password.html')
 
-
-@app.route("/reset-password/<token>", methods=["GET", "POST"])
+# ── Reset Password Page ───────────────────────────────
+@app.route('/reset-password/<token>')
 def reset_password(token):
-    db    = get_db()
-    reset = db.execute(
-        "SELECT * FROM password_resets WHERE token=? AND used=0", (token,)
-    ).fetchone()
-    invalid = not reset or datetime.datetime.fromisoformat(reset["expires_at"]) < datetime.datetime.now()
+    return render_template('reset_password.html', token=token)
 
-    if not invalid and request.method == "POST":
-        pw = request.form.get("password", "")
-        cf = request.form.get("confirm", "")
-        if len(pw) < 6:
-            flash("Password must be at least 6 characters.", "error")
-        elif pw != cf:
-            flash("Passwords do not match.", "error")
-        else:
-            db.execute("UPDATE users SET password=? WHERE id=?", (hash_pw(pw), reset["user_id"]))
-            db.execute("UPDATE password_resets SET used=1 WHERE token=?", (token,))
-            db.commit()
-            db.close()
-            flash("Password reset successful! You can now sign in. ✅", "success")
-            return redirect(url_for("login"))
-
-    db.close()
-    return render_template("reset_password.html", invalid=invalid, token=token)
-
-
-# ── STATIC PAGES ──────────────────────────────────────────────────────────
-
-@app.route("/terms")
-def terms():
-    return render_template("terms.html")
-
-@app.route("/privacy")
-def privacy():
-    return render_template("privacy.html")
-
-@app.route("/income", methods=["GET", "POST"])
+# ── Savings Page ──────────────────────────────────────
+@app.route('/savings')
 @login_required
-def income():
-    uid = session["user_id"]
-    db  = get_db()
+def savings_page():
+    return render_template('savings.html', **sv())
 
-    if request.method == "POST":
-        desc        = request.form.get("description", "").strip()
-        amount      = request.form.get("amount", "")
-        income_type = request.form.get("type", "salary")
-        date        = request.form.get("date", datetime.date.today().isoformat())
-        if not desc or not amount:
-            flash("Description and amount are required.", "error")
-        else:
-            db.execute(
-                "INSERT INTO income (user_id,description,amount,type,date) VALUES (?,?,?,?,?)",
-                (uid, desc, float(amount), income_type, date)
-            )
-            db.commit()
-            flash(f"Income '{desc}' added successfully! 💰", "success")
-
-    month = request.args.get("month", datetime.date.today().strftime("%Y-%m"))
-    rows  = db.execute(
-        "SELECT * FROM income WHERE user_id=? AND date LIKE ? ORDER BY date DESC",
-        (uid, f"{month}%")
-    ).fetchall()
-    total = sum(r["amount"] for r in rows)
-    db.close()
-
-    return render_template("income.html", **sv(),
-                           income_list=rows, total=total, month=month)
-
-
-
-# ══════════════════════════════════════════════════════════════════════════
-# API ROUTES — called by fetch() in templates
-# ══════════════════════════════════════════════════════════════════════════
-
-# ── EXPENSES API ─────────────────────────────────────────────────────────
-
-@app.route("/api/expenses")
+# ── Get All Savings Goals ─────────────────────────────
+@app.route('/api/savings')
 @login_required
-def api_expenses_get():
-    uid   = session["user_id"]
-    month = request.args.get("month", datetime.date.today().strftime("%m")).zfill(2)
-    year  = request.args.get("year",  datetime.date.today().strftime("%Y"))
-    db    = get_db()
-    rows  = db.execute(
-        """SELECT * FROM expenses
-           WHERE user_id=?
-             AND strftime('%m',date)=?
-             AND strftime('%Y',date)=?
-           ORDER BY date DESC""",
-        (uid, month, year)
-    ).fetchall()
-    total = sum(r["amount"] for r in rows)
-    db.close()
-    return {"expenses": [dict(r) for r in rows], "total": round(total, 2)}
+def get_savings():
+    goals = SavingsGoal.query.filter_by(user_id=session['user_id']).order_by(SavingsGoal.created_at.desc()).all()
 
+    result = []
+    for g in goals:
+        goal_dict = {
+            'id':            g.id,
+            'name':          g.name,
+            'target_amount': g.target_amount,
+            'saved_amount':  g.saved_amount,
+            'deadline':      g.deadline,
+            'created_at':    g.created_at.strftime('%Y-%m-%d'),
+            'progress_pct':  round((g.saved_amount / g.target_amount) * 100, 1) if g.target_amount > 0 else 0,
+            'remaining':     round(g.target_amount - g.saved_amount, 2)
+        }
+        result.append(goal_dict)
 
-@app.route("/api/expenses/add", methods=["POST"])
+    return jsonify({'goals': result})
+
+# ── Add New Savings Goal ──────────────────────────────
+@app.route('/api/savings/add', methods=['POST'])
 @login_required
-def api_expenses_add():
-    uid  = session["user_id"]
+def add_savings():
     data = request.get_json()
-    desc     = data.get("description", "").strip()
-    amount   = data.get("amount", 0)
-    category = data.get("category", "others")
-    date     = data.get("date", datetime.date.today().isoformat())
-    if not desc or not amount:
-        return {"error": "Description and amount are required"}, 400
-    db  = get_db()
-    cur = db.execute(
-        "INSERT INTO expenses (user_id,description,category,amount,date) VALUES (?,?,?,?,?)",
-        (uid, desc, category, float(amount), date)
-    )
-    db.commit()
-    new_id = cur.lastrowid
-    db.close()
-    return {"id": new_id, "description": desc, "category": category,
-            "amount": float(amount), "date": date}, 201
 
+    name          = (data.get('name') or '').strip()
+    target_amount = data.get('target_amount', 0)
+    deadline      = data.get('deadline') or None
 
-@app.route("/api/expenses/delete/<int:eid>", methods=["DELETE"])
-@login_required
-def api_expenses_delete(eid):
-    uid = session["user_id"]
-    db  = get_db()
-    db.execute("DELETE FROM expenses WHERE id=? AND user_id=?", (eid, uid))
-    db.commit()
-    db.close()
-    return {"deleted": eid}
-
-
-# ── INCOME API ────────────────────────────────────────────────────────────
-
-@app.route("/api/income")
-@login_required
-def api_income_get():
-    uid   = session["user_id"]
-    month = request.args.get("month", datetime.date.today().strftime("%m")).zfill(2)
-    year  = request.args.get("year",  datetime.date.today().strftime("%Y"))
-    db    = get_db()
-    rows  = db.execute(
-        """SELECT * FROM income
-           WHERE user_id=?
-             AND strftime('%m',date)=?
-             AND strftime('%Y',date)=?
-           ORDER BY date DESC""",
-        (uid, month, year)
-    ).fetchall()
-    total = sum(r["amount"] for r in rows)
-    db.close()
-    return {"income": [dict(r) for r in rows], "total": round(total, 2)}
-
-
-@app.route("/api/income/add", methods=["POST"])
-@login_required
-def api_income_add():
-    uid  = session["user_id"]
-    data = request.get_json()
-    desc        = data.get("description", "").strip()
-    amount      = data.get("amount", 0)
-    income_type = data.get("income_type", "salary")
-    date        = data.get("date", datetime.date.today().isoformat())
-    if not desc or not amount:
-        return {"error": "Description and amount are required"}, 400
-    db  = get_db()
-    cur = db.execute(
-        "INSERT INTO income (user_id,description,amount,type,date) VALUES (?,?,?,?,?)",
-        (uid, desc, float(amount), income_type, date)
-    )
-    db.commit()
-    new_id = cur.lastrowid
-    db.close()
-    return {"id": new_id, "description": desc, "amount": float(amount),
-            "type": income_type, "date": date}, 201
-
-
-@app.route("/api/income/delete/<int:iid>", methods=["DELETE"])
-@login_required
-def api_income_delete(iid):
-    uid = session["user_id"]
-    db  = get_db()
-    db.execute("DELETE FROM income WHERE id=? AND user_id=?", (iid, uid))
-    db.commit()
-    db.close()
-    return {"deleted": iid}
-
-
-# ── SAVINGS API ───────────────────────────────────────────────────────────
-
-@app.route("/api/savings")
-@login_required
-def api_savings_get():
-    uid  = session["user_id"]
-    db   = get_db()
-    rows = db.execute(
-        "SELECT * FROM savings WHERE user_id=? ORDER BY created_at DESC", (uid,)
-    ).fetchall()
-    db.close()
-    goals = []
-    for r in rows:
-        g = dict(r)
-        g["progress_pct"] = round((g["saved"] / g["target"]) * 100, 1) if g["target"] > 0 else 0
-        g["remaining"]    = round(g["target"] - g["saved"], 2)
-        goals.append(g)
-    return {"goals": goals}
-
-
-@app.route("/api/savings/add", methods=["POST"])
-@login_required
-def api_savings_add():
-    uid  = session["user_id"]
-    data = request.get_json()
-    name          = data.get("name", "").strip()
-    target_amount = data.get("target_amount", 0)
-    deadline      = data.get("deadline") or None
     if not name or not target_amount:
-        return {"error": "Goal name and target amount are required"}, 400
-    db  = get_db()
-    cur = db.execute(
-        "INSERT INTO savings (user_id,goal_name,target,target_date) VALUES (?,?,?,?)",
-        (uid, name, float(target_amount), deadline)
+        return jsonify({'error': 'Goal name and target amount are required'}), 400
+
+    new_goal = SavingsGoal(
+        user_id       = session['user_id'],
+        name          = name,
+        target_amount = float(target_amount),
+        saved_amount  = float(data.get('saved_amount', 0)),
+        deadline      = deadline
     )
-    db.commit()
-    new_id = cur.lastrowid
-    db.close()
-    return {"id": new_id, "name": name, "target_amount": float(target_amount),
-            "saved": 0, "progress_pct": 0, "deadline": deadline}, 201
+    db.session.add(new_goal)
+    db.session.commit()
+    return jsonify({
+        'id': new_goal.id, 'name': name,
+        'target_amount': float(target_amount),
+        'saved_amount': 0, 'progress_pct': 0, 'deadline': deadline
+    }), 201
 
-
-@app.route("/api/savings/topup/<int:gid>", methods=["POST"])
+# ── Add Money to a Goal ────────────────────────────────
+@app.route('/api/savings/topup/<int:goal_id>', methods=['POST'])
 @login_required
-def api_savings_topup(gid):
-    uid  = session["user_id"]
-    data = request.get_json()
-    amount = float(data.get("amount", 0))
-    if amount <= 0:
-        return {"error": "Amount must be greater than 0"}, 400
-    db   = get_db()
-    goal = db.execute(
-        "SELECT * FROM savings WHERE id=? AND user_id=?", (gid, uid)
-    ).fetchone()
+def topup_savings(goal_id):
+    goal = SavingsGoal.query.filter_by(id=goal_id, user_id=session['user_id']).first()
     if not goal:
-        db.close()
-        return {"error": "Goal not found"}, 404
-    new_saved = min(goal["saved"] + amount, goal["target"])
-    db.execute("UPDATE savings SET saved=? WHERE id=?", (new_saved, gid))
-    db.commit()
-    db.close()
-    return {"id": gid, "saved": new_saved, "completed": new_saved >= goal["target"]}
+        return jsonify({'error': 'Goal not found'}), 404
 
+    data   = request.get_json()
+    amount = float(data.get('amount', 0))
 
-@app.route("/api/savings/delete/<int:gid>", methods=["DELETE"])
+    if amount <= 0:
+        return jsonify({'error': 'Amount must be greater than 0'}), 400
+
+    goal.saved_amount = min(goal.saved_amount + amount, goal.target_amount)
+    db.session.commit()
+
+    return jsonify({
+        'id':           goal_id,
+        'saved_amount': goal.saved_amount,
+        'completed':    goal.saved_amount >= goal.target_amount
+    })
+
+# ── Delete Savings Goal ────────────────────────────────
+@app.route('/api/savings/delete/<int:goal_id>', methods=['DELETE'])
 @login_required
-def api_savings_delete(gid):
-    uid = session["user_id"]
-    db  = get_db()
-    db.execute("DELETE FROM savings WHERE id=? AND user_id=?", (gid, uid))
-    db.commit()
-    db.close()
-    return {"deleted": gid}
+def delete_savings(goal_id):
+    goal = SavingsGoal.query.filter_by(id=goal_id, user_id=session['user_id']).first()
+    if not goal:
+        return jsonify({'error': 'Not found'}), 404
 
-# ── INIT ──────────────────────────────────────────────────────────────────
-init_db()
+    db.session.delete(goal)
+    db.session.commit()
+    return jsonify({'deleted': goal_id})
 
-if __name__ == "__main__":
+# ── Create DB & Run ────────────────────────────────────
+with app.app_context():
+    db.create_all()
+
+if __name__ == '__main__':
     app.run(debug=True)

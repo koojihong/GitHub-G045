@@ -212,13 +212,7 @@ function switchView(view) {
 
 // ── OVERALL loader ────────────────────────────────────
 function loadOverallData() {
-    // Build the same month range as the picker (12 months back up to current month)
-    const now    = new Date();
-    const months = [];
-    for (let delta = -12; delta <= 0; delta++) {
-        const d = new Date(now.getFullYear(), now.getMonth() + delta, 1);
-        months.push(d.toISOString().slice(0, 7));
-    }
+    const months = Array.from(document.querySelectorAll('#month-picker option')).map(o => o.value);
 
     Promise.all(
         months.map(m => {
@@ -392,31 +386,14 @@ function renderSavingsOverview(goals) {
 }
 
 // ── Init ───────────────────────────────────────────────
-// Populate month picker dynamically (12 months back + 6 ahead)
-// and kick off the first data load once the DOM is ready
-document.addEventListener('DOMContentLoaded', function () {
-    const picker = document.getElementById('month-picker');
-    const now    = new Date();
-    // Generate from 12 months ago up to 6 months ahead
-    for (let delta = -12; delta <= 6; delta++) {
-        const d   = new Date(now.getFullYear(), now.getMonth() + delta, 1);
-        const val = d.toISOString().slice(0, 7);
-        const lbl = d.toLocaleString('default', { month: 'long', year: 'numeric' });
-        const opt = document.createElement('option');
-        opt.value = val;
-        opt.textContent = lbl;
-        if (val === currentMonth) opt.selected = true;
-        picker.appendChild(opt);
-    }
-
-    // Sync the trend label to the initially selected month
+// Sync trend label to the initially selected month
+(function(){
     const [y, m] = currentMonth.split('-');
-    const label  = new Date(y, m - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-    const tag    = document.getElementById('trend-month-tag');
+    const label = new Date(y, m-1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+    const tag = document.getElementById('trend-month-tag');
     if (tag) tag.textContent = label;
-
-    loadData();
-});
+})();
+loadData();
 </script>
 
 <style>
@@ -462,7 +439,6 @@ body {
   position: fixed;
   top: 0; left: 0; bottom: 0;
   overflow-y: auto;
-  overflow-x: hidden;
 }
 .logo {
   display: flex;
@@ -498,7 +474,7 @@ body {
 }
 .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--honey); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; }
 .user-name  { font-size: 13px; color: #fff; font-weight: 500; }
-.user-email { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
+.user-email { font-size: 11px; color: var(--muted); }
 
 /* ── MAIN CONTENT ────────────────────────── */
 .main {
@@ -725,6 +701,14 @@ body {
     <div class="month-select" id="month-select-wrap">
       📅&nbsp;
       <select id="month-picker" onchange="changeMonth(this.value)">
+        <option value="2026-05">May 2026</option>
+        <option value="2026-06" selected>June 2026</option>
+        <option value="2026-07">July 2026</option>
+        <option value="2026-08">August 2026</option>
+        <option value="2026-09">September 2026</option>
+        <option value="2026-10">October 2026</option>
+        <option value="2026-11">November 2026</option>
+        <option value="2026-12">December 2026</option>
       </select>
     </div>
   </div>
