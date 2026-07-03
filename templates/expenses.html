@@ -138,6 +138,18 @@ body {
 .metric-value.green { color: var(--green); }
 .metric-value.honey { color: var(--honey); }
 
+.status-bar-bg   { height: 6px; background: var(--comb); border-radius: 3px; overflow: hidden; margin-top: 10px; }
+.status-bar-fill { height: 100%; border-radius: 3px; background: var(--muted); width: 0%; transition: width 0.6s ease, background 0.3s ease; }
+.status-badge {
+  display: inline-block; margin-top: 8px;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+}
+.status-badge.green { background: #dcfce7; color: var(--green); }
+.status-badge.honey { background: var(--comb); color: var(--honey-dk); }
+.status-badge.red   { background: #fee2e2; color: var(--red); }
+.status-badge.muted { background: #f1f5f9; color: var(--muted); }
+
 /* ── PANEL ───────────────────────────────── */
 .panel {
   background: var(--white); border: 1px solid var(--border);
@@ -421,6 +433,14 @@ tbody tr:hover { background: #fffaf0; }
       <div class="metric-label">Daily Average</div>
       <div class="metric-value green" id="m-avg">RM 0.00</div>
     </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="background:#FDF3DC">🎯</div>
+      <div class="metric-label">Budget Status</div>
+      <div class="metric-value" id="m-status-value">—</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px" id="m-status-figures"></div>
+      <div class="status-bar-bg"><div class="status-bar-fill" id="m-status-bar"></div></div>
+      <div class="status-badge muted" id="m-status-badge">No budget set</div>
+    </div>
   </div>
 
   <!-- ADD EXPENSE PANEL -->
@@ -671,12 +691,68 @@ function updateSummary(data) {
   document.getElementById('m-avg').textContent     = `RM ${avg.toFixed(2)}`;
   document.getElementById('table-tag').textContent = `${data.length} record${data.length !== 1 ? 's' : ''}`;
 
+  updateBudgetStatus(total);
+
   // month label for distribution panel
   const [yr, mo] = picker.value.split('-');
   document.getElementById('dist-month-tag').textContent =
     new Date(yr, mo - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
 
   renderDistribution(data);
+}
+
+// ── Budget status card ────────────────────────────────
+async function updateBudgetStatus(spent) {
+  const valueEl    = document.getElementById('m-status-value');
+  const figuresEl  = document.getElementById('m-status-figures');
+  const badgeEl    = document.getElementById('m-status-badge');
+  const barEl      = document.getElementById('m-status-bar');
+
+  const [yr, mo] = picker.value.split('-');
+  let budget = 0;
+
+  try {
+    const res  = await fetch(`/api/income?month=${mo}&year=${yr}`, { credentials: 'same-origin' });
+    const json = await res.json();
+    budget = (json.income || []).reduce((s, i) => s + i.amount, 0);
+  } catch (e) {
+    // fall back to a previously saved income figure if the request fails
+    const cached = localStorage.getItem('budgetbee_income');
+    if (cached) budget = parseFloat(cached) || 0;
+  }
+
+  if (budget <= 0) {
+    valueEl.textContent   = '—';
+    valueEl.className     = 'metric-value';
+    figuresEl.textContent = `RM ${spent.toFixed(2)} spent`;
+    badgeEl.textContent   = 'No budget set';
+    badgeEl.className     = 'status-badge muted';
+    barEl.style.width     = '0%';
+    barEl.style.background = 'var(--muted)';
+    return;
+  }
+
+  const pct = (spent / budget) * 100;
+  valueEl.textContent   = `${pct.toFixed(0)}% used`;
+  figuresEl.textContent = `RM ${spent.toFixed(2)} of RM ${budget.toFixed(2)}`;
+  barEl.style.width     = Math.min(pct, 100) + '%';
+
+  if (pct < 80) {
+    valueEl.className   = 'metric-value green';
+    badgeEl.textContent = '✓ Below Budget';
+    badgeEl.className   = 'status-badge green';
+    barEl.style.background = 'var(--green)';
+  } else if (pct <= 100) {
+    valueEl.className   = 'metric-value honey';
+    badgeEl.textContent = '⚠ Almost There';
+    badgeEl.className   = 'status-badge honey';
+    barEl.style.background = 'var(--honey)';
+  } else {
+    valueEl.className   = 'metric-value red';
+    badgeEl.textContent = '⚠ Over Budget';
+    badgeEl.className   = 'status-badge red';
+    barEl.style.background = 'var(--red)';
+  }
 }
 
 // ── Spending distribution donut chart ─────────────────
