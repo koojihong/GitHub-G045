@@ -687,6 +687,8 @@ function renderBreakdown(data) {
   if (calcInput && calcDisplay) {
     calcInput.value = total.toFixed(2);
     calcDisplay.textContent = 'RM ' + total.toFixed(2);
+    // Save for expenses Distribution Calc
+    try { localStorage.setItem('budgetbee_income', total.toFixed(2)); } catch(e) {}
     recalc();
   }
   data.forEach(i => byType[i.type] = (byType[i.type] || 0) + i.amount);

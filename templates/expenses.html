@@ -271,11 +271,83 @@ tbody tr:hover { background: #fffaf0; }
 .alert-banner.ok   { display:flex; background:#EDFDF5; color:#0A5232; border:1px solid #A3E8C4; }
 .alert-banner.warn { display:flex; background:#FFF4E0; color:#7A4D08; border:1px solid #F5D48A; }
 
-/* ── RESPONSIVE ──────────────────────────── */
-@media (max-width: 900px) {
-  .metrics { grid-template-columns: repeat(2,1fr); }
-  .form-grid { grid-template-columns: 1fr 1fr; }
+/* ── DIST CALC PANEL ─────────────────────── */
+.dist-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 18px; background: var(--honey); color: #fff;
+  border: none; border-radius: 10px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
 }
+.dist-btn:hover { background: var(--honey-dk); }
+
+.dist-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4); z-index: 200;
+  align-items: flex-start; justify-content: flex-end;
+}
+.dist-overlay.open { display: flex; }
+.dist-drawer {
+  width: 480px; max-width: 95vw; height: 100vh;
+  background: var(--white); box-shadow: -8px 0 40px rgba(0,0,0,0.15);
+  overflow-y: auto; padding: 28px;
+  animation: slideIn 0.25s ease;
+}
+@keyframes slideIn { from{transform:translateX(100%)} to{transform:translateX(0)} }
+.dist-drawer-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 24px;
+}
+.dist-drawer-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--dark); }
+.dist-drawer-sub   { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.btn-close-drawer {
+  background: none; border: none; font-size: 20px; cursor: pointer;
+  color: var(--muted); padding: 4px 8px; border-radius: 8px;
+  transition: all 0.15s;
+}
+.btn-close-drawer:hover { background: var(--comb); color: var(--dark); }
+.dc-section { margin-bottom: 22px; }
+.dc-section-title {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted); margin-bottom: 12px;
+}
+.dc-income-box {
+  background: var(--comb); border-radius: 12px; padding: 16px;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px;
+}
+.dc-income-label { font-size: 13px; color: var(--honey-dk); font-weight: 600; }
+.dc-income-val   { font-size: 20px; font-weight: 700; color: var(--honey-dk); }
+.dc-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid rgba(196,123,14,0.07);
+}
+.dc-row:last-child { border-bottom: none; }
+.dc-row-icon  { font-size: 16px; width: 24px; text-align: center; flex-shrink: 0; }
+.dc-row-name  { flex: 1; font-size: 13px; font-weight: 500; color: var(--dark); }
+.dc-row-bar-wrap { width: 100px; }
+.dc-row-bar-bg   { height: 6px; background: var(--comb); border-radius: 3px; overflow: hidden; }
+.dc-row-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+.dc-row-budget { font-size: 12px; color: var(--muted); min-width: 72px; text-align: right; }
+.dc-row-actual { font-size: 12px; font-weight: 600; min-width: 72px; text-align: right; }
+.dc-row-actual.over  { color: var(--red); }
+.dc-row-actual.under { color: var(--green); }
+.dc-row-actual.zero  { color: var(--muted); }
+.dc-summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 16px; }
+.dc-summary-card { background: var(--light); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
+.dc-summary-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+.dc-summary-val { font-size: 15px; font-weight: 700; }
+.dc-summary-val.green  { color: var(--green); }
+.dc-summary-val.red    { color: var(--red); }
+.dc-summary-val.honey  { color: var(--honey); }
+.dc-no-data { text-align: center; padding: 32px 16px; color: var(--muted); font-size: 13px; }
+.dc-status-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 20px;
+  font-size: 10px; font-weight: 600;
+}
+.dc-status-badge.over  { background: #fee2e2; color: var(--red); }
+.dc-status-badge.under { background: #dcfce7; color: var(--green); }
+.dc-status-badge.met   { background: #dcfce7; color: var(--green); }
 </style>
 </head>
 <body>
@@ -320,9 +392,12 @@ tbody tr:hover { background: #fffaf0; }
       <div class="page-title">Expenses</div>
       <div class="page-sub">Track and manage your monthly spending</div>
     </div>
-    <div class="month-select">
-      📅&nbsp;
-      <input type="month" id="month-picker"/>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="dist-btn" onclick="openDistCalc()">📊 Distribution Calc</button>
+      <div class="month-select">
+        📅&nbsp;
+        <input type="month" id="month-picker"/>
+      </div>
     </div>
   </div>
 
@@ -429,6 +504,61 @@ tbody tr:hover { background: #fffaf0; }
   </div>
 
 </div><!-- /main -->
+
+<!-- DISTRIBUTION CALC DRAWER -->
+<div class="dist-overlay" id="dist-overlay" onclick="if(event.target===this)closeDistCalc()">
+  <div class="dist-drawer">
+    <div class="dist-drawer-header">
+      <div>
+        <div class="dist-drawer-title">📊 Distribution Calculation</div>
+        <div class="dist-drawer-sub">How your actual spending compares to your Income Distribution plan</div>
+      </div>
+      <button class="btn-close-drawer" onclick="closeDistCalc()">✕</button>
+    </div>
+
+    <!-- Income from calculator -->
+    <div class="dc-section">
+      <div class="dc-income-box">
+        <div class="dc-income-label">💰 Monthly Income (from Income page)</div>
+        <div class="dc-income-val" id="dc-income-val">RM 0.00</div>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="dc-summary-grid" style="margin-bottom:22px;">
+      <div class="dc-summary-card">
+        <div class="dc-summary-label">Budgeted</div>
+        <div class="dc-summary-val honey" id="dc-total-budget">RM 0.00</div>
+      </div>
+      <div class="dc-summary-card">
+        <div class="dc-summary-label">Actual Spent</div>
+        <div class="dc-summary-val red" id="dc-total-actual">RM 0.00</div>
+      </div>
+      <div class="dc-summary-card">
+        <div class="dc-summary-label">Difference</div>
+        <div class="dc-summary-val" id="dc-total-diff">RM 0.00</div>
+      </div>
+    </div>
+
+    <!-- Per-category rows -->
+    <div class="dc-section">
+      <div class="dc-section-title">Budget vs Actual by Category</div>
+      <div id="dc-rows">
+        <div class="dc-no-data">🐝 No income distribution set up yet.<br>Go to the <a href="/income" style="color:var(--honey)">Income page</a> to set up your budget allocation.</div>
+      </div>
+    </div>
+
+    <!-- Unallocated / leftover -->
+    <div class="dc-section" id="dc-leftover-section" style="display:none">
+      <div class="dc-section-title">What You Can Still Spend</div>
+      <div id="dc-leftover-rows"></div>
+    </div>
+
+    <div style="margin-top:8px;font-size:11px;color:var(--muted);text-align:center">
+      Budget plan synced from your Income Distribution Calculator
+    </div>
+  </div>
+</div>
 
 <!-- EDIT MODAL -->
 <div class="modal-overlay" id="edit-modal">
@@ -702,6 +832,145 @@ async function saveEdit() {
 document.getElementById('edit-modal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
+
+// ── Distribution Calc drawer ──────────────────────────
+const ALLOC_COLORS = ['#C47B0E','#2D8A5A','#3572B8','#6B50C8','#C4507A','#D64545','#1B8C8C','#E67E22'];
+
+function openDistCalc() {
+  document.getElementById('dist-overlay').classList.add('open');
+  // Try to get income from API if not in localStorage
+  const [yr, mo] = picker.value.split('-');
+  fetch(`/api/income?month=${mo}&year=${yr}`, {credentials:'same-origin'})
+    .then(r => r.json())
+    .then(json => {
+      const total = (json.income || []).reduce((s,i) => s + i.amount, 0);
+      if (total > 0) localStorage.setItem('budgetbee_income', total.toFixed(2));
+      renderDistCalc();
+    })
+    .catch(() => renderDistCalc());
+}
+function closeDistCalc() {
+  document.getElementById('dist-overlay').classList.remove('open');
+}
+
+function renderDistCalc() {
+  // Get income and allocation plan from localStorage (set by income page)
+  let income = 0;
+  let allocRows = [];
+  try {
+    const raw = localStorage.getItem('budgetbee_alloc');
+    if (raw) allocRows = JSON.parse(raw);
+    const incRaw = localStorage.getItem('budgetbee_income');
+    if (incRaw) income = parseFloat(incRaw) || 0;
+  } catch(e) {}
+
+  document.getElementById('dc-income-val').textContent = 'RM ' + income.toFixed(2);
+
+  // Get current month's actual expenses by category
+  const [yr, mo] = picker.value.split('-');
+  fetch(`/api/expenses?month=${mo}&year=${yr}`, {credentials:'same-origin'})
+    .then(r => r.json())
+    .then(json => {
+      const expenses = json.expenses || [];
+      const actualByName = {}; // we'll match by category names from alloc rows
+
+      // Aggregate expense categories
+      const actualByCat = {};
+      expenses.forEach(e => {
+        actualByCat[e.category] = (actualByCat[e.category] || 0) + e.amount;
+      });
+      const totalActual = expenses.reduce((s,e) => s + e.amount, 0);
+
+      if (allocRows.length === 0) {
+        document.getElementById('dc-rows').innerHTML = `
+          <div class="dc-no-data">🐝 No income distribution set up yet.<br>
+          Go to the <a href="/income" style="color:var(--honey)">Income page</a> to set up your budget allocation.</div>`;
+        document.getElementById('dc-total-budget').textContent = 'RM 0.00';
+        document.getElementById('dc-total-actual').textContent = 'RM ' + totalActual.toFixed(2);
+        document.getElementById('dc-total-diff').textContent   = 'RM 0.00';
+        return;
+      }
+
+      // Try to match alloc rows to expense categories by keyword
+      const CAT_KEYWORDS = {
+        Food:      ['food','groceries','eat','meal','lunch','dinner','breakfast','mamak','restaurant'],
+        Transport: ['transport','car','bus','grab','petrol','fuel','parking'],
+        Shopping:  ['shopping','clothes','fashion','mall'],
+        Bills:     ['bill','rent','housing','utilities','electric','water','internet','phone','telco'],
+        Health:    ['health','medical','gym','doctor','pharmacy','medicine','emergency'],
+      };
+
+      function guessCategory(allocName) {
+        const lower = allocName.toLowerCase();
+        for (const [cat, keywords] of Object.entries(CAT_KEYWORDS)) {
+          if (keywords.some(k => lower.includes(k))) return cat;
+        }
+        return null;
+      }
+
+      let totalBudget = 0;
+      const rowsHtml = allocRows.map((row, i) => {
+        const budget  = income * row.pct / 100;
+        totalBudget  += budget;
+        const guessed = guessCategory(row.name);
+        const actual  = guessed ? (actualByCat[guessed] || 0) : 0;
+        const diff    = budget - actual;
+        const barPct  = budget > 0 ? Math.min((actual / budget) * 100, 100) : 0;
+        const over    = actual > budget;
+        const color   = ALLOC_COLORS[i % ALLOC_COLORS.length];
+        const status  = over ? 'over' : actual === 0 ? '' : 'under';
+
+        return `
+          <div class="dc-row">
+            <div class="dc-row-icon">${row.icon}</div>
+            <div class="dc-row-name">
+              ${row.name}
+              ${guessed ? `<div style="font-size:10px;color:var(--muted)">matched → ${guessed}</div>` : `<div style="font-size:10px;color:var(--muted)">no expense match</div>`}
+            </div>
+            <div class="dc-row-bar-wrap">
+              <div class="dc-row-bar-bg">
+                <div class="dc-row-bar-fill" style="width:${barPct}%;background:${over?'var(--red)':color}"></div>
+              </div>
+            </div>
+            <div class="dc-row-budget">${row.pct}% · RM ${budget.toFixed(2)}</div>
+            <div class="dc-row-actual ${over?'over':actual===0?'zero':'under'}">
+              ${actual === 0 ? '—' : 'RM '+actual.toFixed(2)}
+              ${status ? `<span class="dc-status-badge ${status}">${over?'OVER':'OK'}</span>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+
+      document.getElementById('dc-rows').innerHTML = rowsHtml;
+
+      const diff = totalBudget - totalActual;
+      document.getElementById('dc-total-budget').textContent = 'RM ' + totalBudget.toFixed(2);
+      document.getElementById('dc-total-actual').textContent = 'RM ' + totalActual.toFixed(2);
+      const diffEl = document.getElementById('dc-total-diff');
+      diffEl.textContent  = (diff < 0 ? '-' : '+') + 'RM ' + Math.abs(diff).toFixed(2);
+      diffEl.className    = 'dc-summary-val ' + (diff < 0 ? 'red' : 'green');
+
+      // Leftover section: unmatched expense categories
+      const matchedCats = new Set(
+        allocRows.map(r => guessCategory(r.name)).filter(Boolean)
+      );
+      const unmatchedSpend = Object.entries(actualByCat)
+        .filter(([cat]) => !matchedCats.has(cat));
+
+      const leftoverSec = document.getElementById('dc-leftover-section');
+      if (unmatchedSpend.length > 0) {
+        leftoverSec.style.display = '';
+        document.getElementById('dc-leftover-rows').innerHTML = unmatchedSpend.map(([cat, amt]) => `
+          <div class="dc-row">
+            <div class="dc-row-icon">${catIcon[cat] || '📦'}</div>
+            <div class="dc-row-name">${cat} <div style="font-size:10px;color:var(--muted)">not in budget plan</div></div>
+            <div style="flex:1"></div>
+            <div class="dc-row-actual over">RM ${amt.toFixed(2)}</div>
+          </div>`).join('');
+      } else {
+        leftoverSec.style.display = 'none';
+      }
+    });
+}
 
 // ── Init ─────────────────────────────────────────────
 loadExpenses();

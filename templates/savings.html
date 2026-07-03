@@ -218,12 +218,39 @@ body {
 }
 .empty div { font-size: 36px; margin-bottom: 10px; }
 
-/* ── RESPONSIVE ──────────────────────────── */
-@media (max-width: 900px) {
-  .metrics { grid-template-columns: repeat(2,1fr); }
-  .form-grid { grid-template-columns: 1fr 1fr; }
-  .goals-grid { grid-template-columns: 1fr; }
+/* ── SAVINGS ALLOCATION PANEL ────────────── */
+.alloc-insight {
+  background: var(--comb); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 20px;
+  animation: fadeUp 0.5s ease 0.15s both;
 }
+.alloc-insight-title { font-size: 14px; font-weight: 600; color: var(--dark); margin-bottom: 4px; }
+.alloc-insight-sub   { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+.alloc-insight-grid  { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.alloc-insight-card  { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
+.alloc-insight-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+.alloc-insight-val   { font-size: 17px; font-weight: 700; }
+.alloc-insight-val.green  { color: var(--green); }
+.alloc-insight-val.honey  { color: var(--honey); }
+.alloc-insight-val.red    { color: var(--red); }
+.month-select {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px 14px; font-size: 13px;
+}
+.month-select input[type="month"] {
+  border: none; outline: none;
+  font-family: 'DM Sans', sans-serif; font-size: 13px;
+  background: transparent; color: var(--dark); cursor: pointer;
+}
+/* ── GOAL STATUS BADGE ───────────────────── */
+.goal-status {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600; margin-top: 4px;
+}
+.goal-status.success { background: #dcfce7; color: var(--green); }
+.goal-status.warning { background: #FFF4E0; color: var(--honey-dk); }
+.goal-status.behind  { background: #fee2e2; color: var(--red); }
 </style>
 </head>
 <body>
@@ -267,6 +294,34 @@ body {
     <div>
       <div class="page-title">Savings Goals</div>
       <div class="page-sub">Track your monthly savings goals and overall progress</div>
+    </div>
+    <div class="month-select">
+      📅&nbsp;
+      <input type="month" id="month-picker"/>
+    </div>
+  </div>
+
+  <!-- INCOME DISTRIBUTION INSIGHT -->
+  <div class="alloc-insight">
+    <div class="alloc-insight-title">💡 Monthly Savings Calculation</div>
+    <div class="alloc-insight-sub">Based on your Income Distribution plan and actual expenses this month</div>
+    <div class="alloc-insight-grid">
+      <div class="alloc-insight-card">
+        <div class="alloc-insight-label">Monthly Income</div>
+        <div class="alloc-insight-val honey" id="si-income">RM 0.00</div>
+      </div>
+      <div class="alloc-insight-card">
+        <div class="alloc-insight-label">Monthly Expenses</div>
+        <div class="alloc-insight-val red" id="si-expenses">RM 0.00</div>
+      </div>
+      <div class="alloc-insight-card">
+        <div class="alloc-insight-label">Available to Save</div>
+        <div class="alloc-insight-val green" id="si-available">RM 0.00</div>
+      </div>
+    </div>
+    <div id="si-plan-row" style="margin-top:12px;font-size:12px;color:var(--muted);display:none">
+      📋 Your Income Distribution plan allocates <strong id="si-plan-pct">0%</strong>
+      (<strong id="si-plan-amt">RM 0.00</strong>) to savings this month.
     </div>
   </div>
 
@@ -313,62 +368,147 @@ if (uname && !uname.includes('{')) {
   document.getElementById('sb-avatar').textContent = uname.charAt(0).toUpperCase();
 }
 
-// ── Load all goals on page open ───────────────────────
-async function loadGoals() {
-  const res   = await fetch('/api/savings', { credentials: 'same-origin' });
-  const json   = await res.json();
-  if (json.error) {
-    showAlert('Session expired. Please login again.');
-    return;
+// ── Month picker ──────────────────────────────────────
+const picker = document.getElementById('month-picker');
+const today  = new Date();
+picker.value = today.toISOString().slice(0,7);
+picker.addEventListener('change', () => { loadGoals(); });
+
+// ── Load monthly income/expense calculation ────────────
+async function loadMonthlyCalc() {
+  const [yr, mo] = picker.value.split('-');
+  const [incRes, expRes] = await Promise.all([
+    fetch(`/api/income?month=${mo}&year=${yr}`,   {credentials:'same-origin'}),
+    fetch(`/api/expenses?month=${mo}&year=${yr}`, {credentials:'same-origin'})
+  ]);
+  const incJson = await incRes.json();
+  const expJson = await expRes.json();
+
+  const totalIncome   = (incJson.income   || []).reduce((s,i) => s + i.amount, 0);
+  const totalExpenses = (expJson.expenses || []).reduce((s,e) => s + e.amount, 0);
+  const available     = totalIncome - totalExpenses;
+
+  document.getElementById('si-income').textContent   = 'RM ' + totalIncome.toFixed(2);
+  document.getElementById('si-expenses').textContent = 'RM ' + totalExpenses.toFixed(2);
+  const availEl = document.getElementById('si-available');
+  availEl.textContent = (available < 0 ? '-' : '') + 'RM ' + Math.abs(available).toFixed(2);
+  availEl.className   = 'alloc-insight-val ' + (available < 0 ? 'red' : 'green');
+
+  // Read savings allocation from Income Distribution plan
+  try {
+    const raw = localStorage.getItem('budgetbee_alloc');
+    if (raw) {
+      const rows = JSON.parse(raw);
+      const savingsRow = rows.find(r => r.name.toLowerCase().includes('saving'));
+      if (savingsRow && totalIncome > 0) {
+        const planAmt = totalIncome * savingsRow.pct / 100;
+        document.getElementById('si-plan-pct').textContent = savingsRow.pct + '%';
+        document.getElementById('si-plan-amt').textContent = 'RM ' + planAmt.toFixed(2);
+        document.getElementById('si-plan-row').style.display = '';
+        // Store plan amount so loadGoals can use it
+        window._savingsPlanAmt = planAmt;
+      } else {
+        window._savingsPlanAmt = available > 0 ? available : 0;
+      }
+    } else {
+      window._savingsPlanAmt = available > 0 ? available : 0;
+    }
+  } catch(e) {
+    window._savingsPlanAmt = available > 0 ? available : 0;
   }
+
+  return { totalIncome, totalExpenses, available };
+}
+
+// ── Load all goals ─────────────────────────────────────
+async function loadGoals() {
+  const [yr, mo] = picker.value.split('-');
+  const calcData  = await loadMonthlyCalc();
+  const available = calcData ? calcData.available : 0;
+
+  const res  = await fetch('/api/savings', { credentials: 'same-origin' });
+  const json = await res.json();
+  if (json.error) return;
+
   const goals = (json.goals || []).map(g => ({
     ...g,
-    name:          g.goal_name,
-    saved_amount:  g.saved,
-    target_amount: g.target,
-    deadline:      g.target_date
+    name:          g.goal_name  || g.name,
+    saved_amount:  g.saved      != null ? g.saved : g.saved_amount,
+    target_amount: g.target     != null ? g.target : g.target_amount,
+    deadline:      g.target_date || g.deadline
   }));
 
   const container = document.getElementById('goals-container');
   const tag       = document.getElementById('goals-tag');
 
-  // Update metric cards
-  const totalSaved = goals.reduce((s, g) => s + g.saved_amount, 0);
-  const completed  = goals.filter(g => g.saved_amount >= g.target_amount).length;
-  // Monthly goal: sum of target amounts for this month
-  const now = new Date();
-  const thisMonth = now.getMonth();
-  const thisYear  = now.getFullYear();
   const monthlyGoals = goals.filter(g => {
     if (!g.deadline) return true;
     const d = new Date(g.deadline);
-    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+    return d.getMonth() === parseInt(mo)-1 && d.getFullYear() === parseInt(yr);
   });
   const monthlyTarget = monthlyGoals.reduce((s,g) => s + g.target_amount, 0);
-  document.getElementById('m-goals').textContent = monthlyTarget > 0 ? 'RM ' + monthlyTarget.toFixed(2) : goals.length + ' goals';
-  document.getElementById('m-saved').textContent = `RM ${totalSaved.toFixed(2)}`;
+
+  // How much of the income distribution savings allocation goes to each goal
+  const planAmt = window._savingsPlanAmt || 0;
+  const goalAllocations = {}; // goal id → recommended contribution
+  if (monthlyTarget > 0 && planAmt > 0) {
+    monthlyGoals.forEach(g => {
+      goalAllocations[g.id] = planAmt * (g.target_amount / monthlyTarget);
+    });
+  }
+
+  document.getElementById('m-goals').textContent = monthlyTarget > 0
+    ? 'RM ' + monthlyTarget.toFixed(2) : goals.length + ' goals';
+  document.getElementById('m-saved').textContent = 'RM ' + (available > 0 ? available : 0).toFixed(2);
   const overallPct = goals.length > 0
-    ? (goals.reduce((s,g) => s + Math.min(g.saved_amount/g.target_amount*100,100),0) / goals.length)
+    ? goals.reduce((s,g) => s + Math.min(g.saved_amount / g.target_amount * 100, 100), 0) / goals.length
     : 0;
   document.getElementById('m-done').textContent = overallPct.toFixed(0) + '%';
   tag.textContent = `${goals.length} goal${goals.length !== 1 ? 's' : ''}`;
 
   if (goals.length === 0) {
-    container.innerHTML = `<div class="empty"><div>🐷</div>No savings goals yet for this month</div>`;
+    container.innerHTML = `<div class="empty"><div>🐷</div>No savings goals yet. Add one below!</div>`;
     return;
   }
 
   container.innerHTML = `<div class="goals-grid">${goals.map(g => {
-    const pct      = g.target_amount > 0 ? Math.min((g.saved_amount / g.target_amount) * 100, 100) : 0;
-    const done     = g.saved_amount >= g.target_amount;
-    const color    = done ? '#2D8A5A' : pct >= 75 ? '#C47B0E' : '#3572B8';
+    const pct   = g.target_amount > 0 ? Math.min((g.saved_amount / g.target_amount) * 100, 100) : 0;
+    const done  = g.saved_amount >= g.target_amount;
+    const color = done ? '#2D8A5A' : pct >= 75 ? '#C47B0E' : '#3572B8';
+
+    let statusHtml = '';
+    if (g.deadline) {
+      const dl = new Date(g.deadline);
+      const isThisMonth = dl.getMonth() === parseInt(mo)-1 && dl.getFullYear() === parseInt(yr);
+      if (isThisMonth) {
+        if (done) {
+          statusHtml = `<span class="goal-status success">✅ Goal met this month!</span>`;
+        } else if (available >= (g.target_amount - g.saved_amount)) {
+          statusHtml = `<span class="goal-status warning">💡 You have enough to complete this!</span>`;
+        } else {
+          const shortfall = (g.target_amount - g.saved_amount) - Math.max(available, 0);
+          statusHtml = `<span class="goal-status behind">⚠ RM ${shortfall.toFixed(2)} short this month</span>`;
+        }
+      }
+    } else if (done) {
+      statusHtml = `<span class="goal-status success">✅ Completed!</span>`;
+    }
+
     const deadline = g.deadline ? ` · Due ${g.deadline}` : '';
+    const recommended = goalAllocations[g.id];
+    const recommendedHtml = recommended
+      ? `<div style="font-size:11px;color:var(--honey-dk);background:var(--comb);border-radius:6px;padding:4px 8px;margin-top:6px;display:inline-block">
+           💡 Recommended this month: RM ${recommended.toFixed(2)}
+         </div>`
+      : '';
     return `
     <div class="goal-card">
       <div class="goal-card-top">
         <div>
           <div class="goal-name">${done ? '🏆 ' : ''}${g.name}</div>
           <div style="font-size:11px;color:var(--muted);margin-top:3px">${deadline}</div>
+          ${statusHtml}
+          ${recommendedHtml}
         </div>
         <div class="goal-pct" style="color:${color}">${pct.toFixed(0)}%</div>
       </div>
@@ -392,47 +532,34 @@ async function loadGoals() {
 
 // ── Add new goal ──────────────────────────────────────
 async function addGoal(e) {
-  e.preventDefault();  // stop page from reloading
-
+  e.preventDefault();
   const name          = document.querySelector('[name="goal_name"]').value.trim();
   const target_amount = document.querySelector('[name="target"]').value;
   const deadline      = document.querySelector('[name="target_date"]').value;
-
-  if (!name || !target_amount) {
-    alert('Please fill in goal name and target amount!');
-    return;
-  }
+  if (!name || !target_amount) { alert('Please fill in goal name and target amount!'); return; }
 
   const res = await fetch('/api/savings/add', {
-    method:  'POST',
-    credentials: 'same-origin',
+    method: 'POST', credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ name, target_amount: parseFloat(target_amount), deadline })
+    body: JSON.stringify({ name, target_amount: parseFloat(target_amount), deadline })
   });
-
   if (res.ok) {
-    // Clear fields
-    document.querySelector('[name="goal_name"]').value  = '';
-    document.querySelector('[name="target"]').value     = '';
+    document.querySelector('[name="goal_name"]').value   = '';
+    document.querySelector('[name="target"]').value      = '';
     document.querySelector('[name="target_date"]').value = '';
     loadGoals();
-  } else {
-    alert('Failed to add goal. Are you logged in?');
-  }
+  } else { alert('Failed to add goal. Are you logged in?'); }
 }
 
 // ── Add money to a goal ───────────────────────────────
 async function depositGoal(id, remaining) {
   const amount = prompt(`How much do you want to add? (Max: RM ${remaining.toFixed(2)})`);
   if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return;
-
-  const res = await fetch(`/api/savings/topup/${id}`, {
-    method:  'POST',
-    credentials: 'same-origin',
+  const res  = await fetch(`/api/savings/topup/${id}`, {
+    method: 'POST', credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ amount: parseFloat(amount) })
+    body: JSON.stringify({ amount: parseFloat(amount) })
   });
-
   const data = await res.json();
   if (res.ok) {
     if (data.completed) alert('🏆 Congratulations! Goal completed!');
@@ -450,6 +577,5 @@ async function deleteGoal(id) {
 // ── Init ──────────────────────────────────────────────
 loadGoals();
 </script>
-
 </body>
 </html>
