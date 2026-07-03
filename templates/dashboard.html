@@ -84,6 +84,11 @@ function renderBudgetRing(spent, budget) {
     const emptyState = document.getElementById('budget-empty-state');
     const statsRow   = document.getElementById('budget-stats-row');
 
+    // This panel isn't in the current layout — bail out quietly instead of
+    // throwing (which used to abort loadData() before the trend/category/
+    // transactions renderers below ever ran).
+    if (!ringWrap || !emptyState || !statsRow) return;
+
     if (!budget || budget <= 0) {
         ringWrap.style.display   = 'none';
         statsRow.style.display   = 'none';
@@ -118,7 +123,9 @@ function renderBudgetRing(spent, budget) {
     }
 
     const color = pct >= 100 ? '#D64545' : pct >= 70 ? '#C47B0E' : '#2D8A5A';
-    const ctx = document.getElementById('ringChart').getContext('2d');
+    const ringEl = document.getElementById('ringChart');
+    if (!ringEl) return;
+    const ctx = ringEl.getContext('2d');
     if (ringChart) ringChart.destroy();
     ringChart = new Chart(ctx, {
         type: 'doughnut',
@@ -386,14 +393,24 @@ function renderOverallDonut(expenses, total) {
 
 // ── Overall savings progress ring ─────────────────────
 function renderOverallRing(saved, target) {
+    // Same panel-not-in-layout situation as renderBudgetRing() — guard every
+    // lookup so a missing savings-ring panel can't stop renderSavingsOverview()
+    // (called right after this) from ever running.
+    const pctEl = document.getElementById('ov-ring-pct');
+    const savedEl = document.getElementById('ov-saved');
+    const targetEl = document.getElementById('ov-target');
+    const leftEl = document.getElementById('ov-left');
+    const ringEl = document.getElementById('overallRingChart');
+    if (!pctEl || !savedEl || !targetEl || !leftEl || !ringEl) return;
+
     const pct = target > 0 ? Math.min((saved/target)*100, 100) : 0;
-    document.getElementById('ov-ring-pct').textContent = pct.toFixed(0) + '%';
-    document.getElementById('ov-saved').textContent = rm(saved);
-    document.getElementById('ov-target').textContent = target > 0 ? rm(target) : '—';
-    document.getElementById('ov-left').textContent = target > 0 ? rm(Math.max(target-saved,0)) : '—';
+    pctEl.textContent = pct.toFixed(0) + '%';
+    savedEl.textContent = rm(saved);
+    targetEl.textContent = target > 0 ? rm(target) : '—';
+    leftEl.textContent = target > 0 ? rm(Math.max(target-saved,0)) : '—';
 
     const color = '#6B50C8';
-    const ctx = document.getElementById('overallRingChart').getContext('2d');
+    const ctx = ringEl.getContext('2d');
     if (overallRingChart) overallRingChart.destroy();
     overallRingChart = new Chart(ctx, {
         type: 'doughnut',
