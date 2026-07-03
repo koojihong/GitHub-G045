@@ -844,7 +844,8 @@ function renderAllocTable() {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted);font-size:13px">No categories yet. Add one below.</td></tr>';
     return;
   }
-  tbody.innerHTML = allocRows.map(row => `
+  tbody.innerHTML = allocRows.map(row => {
+    return `
     <tr>
       <td>
         <div class="alloc-name">
@@ -871,7 +872,8 @@ function renderAllocTable() {
         <button class="alloc-remove" onclick="removeRow(${row.id})" title="Remove">✕</button>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 }
 
 // KEY FEATURE: When user changes one %, auto-adjust the LAST row to keep total = 100%
@@ -958,11 +960,12 @@ function addAllocRow() {
 function recalc() {
   const income   = parseFloat(document.getElementById('calc-income').value) || 0;
   const totalPct = allocRows.reduce((s,r) => s + r.pct, 0);
-  const totalAmt = income * totalPct / 100;
-  const unalloc  = income - totalAmt;
 
+  let totalAmt = 0;
   allocRows.forEach(row => {
-    const amt   = income * row.pct / 100;
+    const amt = income * row.pct / 100;
+    totalAmt += amt;
+
     const amtEl = document.getElementById('amt-' + row.id);
     const barEl = document.getElementById('bar-' + row.id);
     if (amtEl) {
@@ -971,6 +974,8 @@ function recalc() {
     }
     if (barEl) barEl.style.width = Math.min(row.pct, 100) + '%';
   });
+
+  const unalloc = income - totalAmt;
 
   const totalEl = document.getElementById('alloc-total-pct');
   totalEl.textContent = totalPct.toFixed(1) + '%';

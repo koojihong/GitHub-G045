@@ -104,7 +104,7 @@ body {
 .page-sub   { font-size: 13px; color: var(--muted); margin-top: 2px; }
 
 /* ── METRIC CARDS ────────────────────────── */
-.metrics { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 24px; }
+.metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
 .metric-card {
   background: var(--white); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 20px;
@@ -115,6 +115,7 @@ body {
 .metric-card:nth-child(1){animation-delay:.05s}
 .metric-card:nth-child(2){animation-delay:.1s}
 .metric-card:nth-child(3){animation-delay:.15s}
+.metric-card:nth-child(4){animation-delay:.2s}
 @keyframes fadeUp { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
 .metric-icon {
   width: 36px; height: 36px; border-radius: 9px;
@@ -125,6 +126,7 @@ body {
 .metric-value { font-size: 22px; font-weight: 600; color: var(--dark); line-height: 1; }
 .metric-value.green { color: var(--green); }
 .metric-value.honey { color: var(--honey); }
+.metric-value.red   { color: var(--red); }
 
 /* ── PANEL ───────────────────────────────── */
 .panel {
@@ -342,6 +344,12 @@ body {
       <div class="metric-label">Your Progress</div>
       <div class="metric-value green" id="m-done">—</div>
     </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="background:#FDF3DC">📈</div>
+      <div class="metric-label">Saving Status</div>
+      <div class="metric-value" id="m-status">—</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px" id="m-status-target"></div>
+    </div>
   </div>
 
   <!-- GOALS PANEL -->
@@ -457,14 +465,44 @@ async function loadGoals() {
     });
   }
 
-  document.getElementById('m-goals').textContent = monthlyTarget > 0
-    ? 'RM ' + monthlyTarget.toFixed(2) : goals.length + ' goals';
-  document.getElementById('m-saved').textContent = 'RM ' + (available > 0 ? available : 0).toFixed(2);
-  const overallPct = goals.length > 0
-    ? goals.reduce((s,g) => s + Math.min(g.saved_amount / g.target_amount * 100, 100), 0) / goals.length
+  // ── Actual amount saved into this month's goals (the real savings data) ──
+  const totalSavedActual = monthlyGoals.reduce((s,g) => s + g.saved_amount, 0);
+
+  // The figure Saving Status is judged against: prefer the Income Distribution
+  // plan (income × Savings %, set on the Income page) since that reflects what
+  // you actually planned to save this month. Fall back to goal targets only
+  // when no income allocation has been set up yet.
+  const statusTarget = planAmt > 0 ? planAmt : monthlyTarget;
+
+  document.getElementById('m-goals').textContent = statusTarget > 0
+    ? 'RM ' + statusTarget.toFixed(2) : goals.length + ' goals';
+  document.getElementById('m-saved').textContent = 'RM ' + totalSavedActual.toFixed(2);
+  const overallPct = statusTarget > 0
+    ? Math.min(totalSavedActual / statusTarget * 100, 100)
     : 0;
   document.getElementById('m-done').textContent = overallPct.toFixed(0) + '%';
   tag.textContent = `${goals.length} goal${goals.length !== 1 ? 's' : ''}`;
+
+  // ── Saving Status: Actual Saved vs Income Distribution Savings Plan ──
+  const statusEl       = document.getElementById('m-status');
+  const statusTargetEl = document.getElementById('m-status-target');
+  if (statusEl) {
+    if (statusTarget <= 0) {
+      statusEl.textContent = '—';
+      statusEl.className   = 'metric-value';
+      if (statusTargetEl) statusTargetEl.textContent = '';
+    } else if (totalSavedActual >= statusTarget) {
+      statusEl.textContent = 'Oversaving';
+      statusEl.className   = 'metric-value green';
+      if (statusTargetEl) statusTargetEl.textContent = 'Target: RM ' + statusTarget.toFixed(2)
+        + (planAmt > 0 ? '' : ' (from goals)');
+    } else {
+      statusEl.textContent = 'Undersaving';
+      statusEl.className   = 'metric-value red';
+      if (statusTargetEl) statusTargetEl.textContent = 'Target: RM ' + statusTarget.toFixed(2)
+        + (planAmt > 0 ? '' : ' (from goals)');
+    }
+  }
 
   if (goals.length === 0) {
     container.innerHTML = `<div class="empty"><div>🐷</div>No savings goals yet. Add one below!</div>`;
