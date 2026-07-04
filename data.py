@@ -12,9 +12,9 @@ app.permanent_session_lifetime = timedelta(minutes=30)
 app.config['MAIL_SERVER']         = 'smtp.gmail.com'
 app.config['MAIL_PORT']           = 587
 app.config['MAIL_USE_TLS']        = True
-app.config['MAIL_USERNAME']       = 'your_email@gmail.com'   # ← change this
-app.config['MAIL_PASSWORD']       = 'your_app_password'      # ← change this (Gmail App Password)
-app.config['MAIL_DEFAULT_SENDER'] = ('Budget Bee', 'your_email@gmail.com')  # ← change this
+app.config['MAIL_USERNAME']       = 'gamertonydoesgaming@gmail.com'   # ← change this
+app.config['MAIL_PASSWORD']       = 'bdjzrwwokybisish'      # ← change this (Gmail App Password)
+app.config['MAIL_DEFAULT_SENDER'] = ('Budget Bee', 'gamertonydoesgaming@gmail.com')  # ← change this
 
 mail = Mail(app)
 
@@ -166,6 +166,26 @@ def send_otp_email(to_email, code, purpose):
           </div>
           <p style="color:#9A8878;font-size:12px;margin-top:20px">If you didn't request this, your password was not changed.</p>
         </div>"""
+    msg = Message(subject=subject, recipients=[to_email], html=body)
+    mail.send(msg)
+
+def send_reset_email(to_email, reset_url):
+    subject = '🔑 Budget Bee — Reset your password'
+    body = f"""
+    <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;background:#FEFAF2;border-radius:12px">
+      <h2 style="color:#C47B0E">🔑 Reset your password</h2>
+      <p style="color:#5a4a3a;font-size:14px;margin-bottom:24px">
+        We received a request to reset your Budget Bee password. Click the button below to choose a new one.
+        This link expires in <strong>1 hour</strong>.
+      </p>
+      <div style="text-align:center;margin-bottom:24px">
+        <a href="{reset_url}" style="display:inline-block;background:#D4870A;color:#fff;text-decoration:none;
+           padding:14px 28px;border-radius:10px;font-weight:600;font-size:15px">Reset Password →</a>
+      </div>
+      <p style="color:#9A8878;font-size:12px">If the button doesn't work, copy and paste this link into your browser:<br>
+        <a href="{reset_url}" style="color:#D4870A;word-break:break-all">{reset_url}</a></p>
+      <p style="color:#9A8878;font-size:12px;margin-top:16px">If you didn't request this, you can safely ignore this email — your password will not be changed.</p>
+    </div>"""
     msg = Message(subject=subject, recipients=[to_email], html=body)
     mail.send(msg)
 
@@ -611,10 +631,11 @@ def profile_delete():
 
 @app.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
+    error = None
     if request.method == "POST":
         email = request.form.get("email", "").strip()
         if not email or "@" not in email:
-            flash("Please enter a valid email address.", "error")
+            error = "Please enter a valid email address."
         else:
             db   = get_db()
             user = db.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
@@ -628,12 +649,19 @@ def forgot_password():
                 db.commit()
                 reset_url = url_for("reset_password", token=token, _external=True)
                 db.close()
-                # In production: send email. For demo, pass URL to template.
-                return render_template("forgot_password.html", sent=reset_url)
+                try:
+                    send_reset_email(email, reset_url)
+                except Exception as e:
+                    # Email failed to send (e.g. bad SMTP credentials) — log it and
+                    # still fall back to showing the link so nobody gets locked out
+                    # while you're debugging your Gmail App Password setup.
+                    print(f"[WARN] Failed to send password reset email to {email}: {e}")
+                    return render_template("forgot_password.html", sent=reset_url)
+                return render_template("forgot_password.html", sent=True)
             db.close()
             # Don't reveal if email exists — always show success
-            return render_template("forgot_password.html", sent="not_found")
-    return render_template("forgot_password.html", sent=None)
+            return render_template("forgot_password.html", sent=True)
+    return render_template("forgot_password.html", sent=None, error=error)
 
 
 @app.route("/reset-password/<token>", methods=["GET", "POST"])
@@ -644,13 +672,14 @@ def reset_password(token):
     ).fetchone()
     invalid = not reset or datetime.datetime.fromisoformat(reset["expires_at"]) < datetime.datetime.now()
 
+    error = None
     if not invalid and request.method == "POST":
         pw = request.form.get("password", "")
         cf = request.form.get("confirm", "")
         if len(pw) < 6:
-            flash("Password must be at least 6 characters.", "error")
+            error = "Password must be at least 6 characters."
         elif pw != cf:
-            flash("Passwords do not match.", "error")
+            error = "Passwords do not match."
         else:
             db.execute("UPDATE users SET password=? WHERE id=?", (hash_pw(pw), reset["user_id"]))
             db.execute("UPDATE password_resets SET used=1 WHERE token=?", (token,))
@@ -660,7 +689,7 @@ def reset_password(token):
             return redirect(url_for("login"))
 
     db.close()
-    return render_template("reset_password.html", invalid=invalid, token=token)
+    return render_template("reset_password.html", invalid=invalid, token=token, error=error)
 
 
 # ── STATIC PAGES ──────────────────────────────────────────────────────────
