@@ -8,7 +8,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 GMAIL_SENDER = "yunghang0712@gmail.com"
-GMAIL_PASSWORD = "khmw bjhf gayo jayo"
+GMAIL_PASSWORD = "comf kgnz trmq chez"
 
 app = Flask(__name__)
 app.secret_key = "budgetbee-secret-key-2025"
