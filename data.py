@@ -3,6 +3,13 @@ from datetime import timedelta
 import sqlite3, hashlib, secrets, datetime
 from functools import wraps
 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+GMAIL_SENDER = "yunghang0712@gmail.com"
+GMAIL_PASSWORD = "khmw bjhf gayo jayo"
+
 app = Flask(__name__)
 app.secret_key = "budgetbee-secret-key-2025"
 app.permanent_session_lifetime = timedelta(minutes=30)
@@ -15,7 +22,6 @@ def get_db():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
-
 def init_db():
     db = get_db()
     db.execute("""
@@ -101,6 +107,39 @@ def sv():
     return {"username": session.get("username",""), "email": session.get("email","")}
 
 # ── ROUTES ────────────────────────────────────────────────────────────────
+
+
+def send_reset_email(to_email, reset_url):
+    """Send password reset email via Gmail."""
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Budget Bee — Reset Your Password"
+        msg["From"]    = GMAIL_SENDER
+        msg["To"]      = to_email
+
+        html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#FEFAF2;border-radius:16px;">
+          <h2 style="color:#C47B0E;">🐝 Budget Bee</h2>
+          <p style="color:#1C1410;">You requested a password reset. Click the button below:</p>
+          <a href="{reset_url}"
+             style="display:inline-block;padding:12px 24px;background:#C47B0E;color:#fff;border-radius:10px;text-decoration:none;font-weight:bold;margin:16px 0;">
+             Reset My Password
+          </a>
+          <p style="color:#9A8878;font-size:12px;">
+            This link expires in 1 hour.<br>
+            If you didn't request this, ignore this email.
+          </p>
+        </div>"""
+
+        msg.attach(MIMEText(html, "html"))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(GMAIL_SENDER, GMAIL_PASSWORD)
+            server.sendmail(GMAIL_SENDER, to_email, msg.as_string())
+        return True
+    except Exception as e:
+        print(f"[Email Error] {e}")
+        return False
 
 @app.route("/")
 def home():
@@ -436,8 +475,12 @@ def forgot_password():
                 db.commit()
                 reset_url = url_for("reset_password", token=token, _external=True)
                 db.close()
-                # In production: send email. For demo, pass URL to template.
-                return render_template("forgot_password.html", sent=reset_url)
+
+                if send_reset_email(user["email"], reset_url):
+                 return render_template("forgot_password.html", sent=True)
+                else:
+                 flash("Unable to send email.", "error")
+                return render_template("forgot_password.html", sent=None)
             db.close()
             # Don't reveal if email exists — always show success
             return render_template("forgot_password.html", sent="not_found")
