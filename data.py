@@ -263,19 +263,25 @@ def register():
             if exists:
                 flash("Username or email already registered.", "error")
             else:
-                # Stash form data in session, send OTP
-                session["pending_register"] = {
-                    "username": username,
-                    "email":    email,
-                    "password": hash_pw(password)
-                }
+                db = get_db()
                 try:
-                    code = create_otp(email, "register")
-                    send_otp_email(email, code, "register")
-                    return redirect(url_for("verify_register"))
-                except Exception as e:
-                    app.logger.error(f"Mail error: {e}")
-                    flash("Could not send verification email. Check MAIL config in data.py.", "error")
+                    cur = db.execute(
+                        "INSERT INTO users (username, email, password) VALUES (?,?,?)",
+                        (username, email, hash_pw(password))
+                    )
+                    db.commit()
+                    new_id = cur.lastrowid
+                    db.close()
+                except sqlite3.IntegrityError:
+                    db.close()
+                    flash("Username or email already registered.", "error")
+                    return render_template("register.html")
+                session.permanent   = True
+                session["user_id"]  = new_id
+                session["username"] = username
+                session["email"]    = email
+                flash(f"Account created! Welcome, {username}! 🎉", "success")
+                return redirect(url_for("dashboard"))
     return render_template("register.html")
 
 
