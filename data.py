@@ -1,6 +1,7 @@
 from flask import Flask, redirect, url_for, render_template, request, session, flash
+from flask_mail import Mail, Message
 from datetime import timedelta
-import sqlite3, hashlib, secrets, datetime
+import sqlite3, hashlib, secrets, datetime, random
 from functools import wraps
 
 import smtplib
@@ -13,6 +14,16 @@ GMAIL_PASSWORD = "khmw bjhf gayo jayo"
 app = Flask(__name__)
 app.secret_key = "budgetbee-secret-key-2025"
 app.permanent_session_lifetime = timedelta(minutes=30)
+
+# ── Flask-Mail config (update these with your Gmail) ──
+app.config['MAIL_SERVER']         = 'smtp.gmail.com'
+app.config['MAIL_PORT']           = 587
+app.config['MAIL_USE_TLS']        = True
+app.config['MAIL_USERNAME']       = 'gamertonydoesgaming@gmail.com'   # ← change this
+app.config['MAIL_PASSWORD']       = 'bdjzrwwokybisish'      # ← change this (Gmail App Password)
+app.config['MAIL_DEFAULT_SENDER'] = ('Budget Bee', 'gamertonydoesgaming@gmail.com')  # ← change this
+
+mail = Mail(app)
 
 DB = "users.db"
 
@@ -88,11 +99,101 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     """)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS otp_codes (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            email      TEXT    NOT NULL,
+            code       TEXT    NOT NULL,
+            purpose    TEXT    NOT NULL,
+            created_at TEXT    DEFAULT (datetime('now')),
+            used       INTEGER DEFAULT 0
+        )
+    """)
     db.commit()
     db.close()
 
 def hash_pw(password):
     return hashlib.sha256(password.encode()).hexdigest()
+
+# ── OTP HELPERS ───────────────────────────────────────────────────────────
+
+def create_otp(email, purpose):
+    """Delete any existing unused OTPs for this email+purpose, then create a new one."""
+    db = get_db()
+    db.execute("DELETE FROM otp_codes WHERE email=? AND purpose=? AND used=0", (email, purpose))
+    code = str(random.randint(100000, 999999))
+    db.execute("INSERT INTO otp_codes (email, code, purpose) VALUES (?,?,?)", (email, code, purpose))
+    db.commit()
+    db.close()
+    return code
+
+def verify_otp(email, purpose, entered_code):
+    """Returns 'ok', 'expired', 'wrong', or 'notfound'."""
+    db  = get_db()
+    row = db.execute(
+        "SELECT * FROM otp_codes WHERE email=? AND purpose=? AND used=0 ORDER BY id DESC LIMIT 1",
+        (email, purpose)
+    ).fetchone()
+    if not row:
+        db.close()
+        return 'notfound'
+    created = datetime.datetime.fromisoformat(row["created_at"])
+    if (datetime.datetime.utcnow() - created).total_seconds() > 600:
+        db.close()
+        return 'expired'
+    if row["code"] != entered_code:
+        db.close()
+        return 'wrong'
+    db.execute("UPDATE otp_codes SET used=1 WHERE id=?", (row["id"],))
+    db.commit()
+    db.close()
+    return 'ok'
+
+def send_otp_email(to_email, code, purpose):
+    if purpose == 'register':
+        subject = '🐝 Budget Bee — Verify your email'
+        body = f"""
+        <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;background:#FEFAF2;border-radius:12px">
+          <h2 style="color:#C47B0E">🐝 Welcome to Budget Bee!</h2>
+          <p style="color:#5a4a3a;font-size:14px;margin-bottom:24px">Use this code to verify your email. Expires in <strong>10 minutes</strong>.</p>
+          <div style="background:#FDF3DC;border:1px solid rgba(196,123,14,0.3);border-radius:10px;padding:24px;text-align:center">
+            <div style="font-size:36px;font-weight:700;letter-spacing:10px;color:#C47B0E">{code}</div>
+          </div>
+          <p style="color:#9A8878;font-size:12px;margin-top:20px">If you didn't create a Budget Bee account, ignore this email.</p>
+        </div>"""
+    else:
+        subject = '🔐 Budget Bee — Password change verification'
+        body = f"""
+        <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;background:#FEFAF2;border-radius:12px">
+          <h2 style="color:#C47B0E">🔐 Password Change Request</h2>
+          <p style="color:#5a4a3a;font-size:14px;margin-bottom:24px">Enter this code to confirm your password change. Expires in <strong>10 minutes</strong>.</p>
+          <div style="background:#FDF3DC;border:1px solid rgba(196,123,14,0.3);border-radius:10px;padding:24px;text-align:center">
+            <div style="font-size:36px;font-weight:700;letter-spacing:10px;color:#C47B0E">{code}</div>
+          </div>
+          <p style="color:#9A8878;font-size:12px;margin-top:20px">If you didn't request this, your password was not changed.</p>
+        </div>"""
+    msg = Message(subject=subject, recipients=[to_email], html=body)
+    mail.send(msg)
+
+def send_reset_email(to_email, reset_url):
+    subject = '🔑 Budget Bee — Reset your password'
+    body = f"""
+    <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;background:#FEFAF2;border-radius:12px">
+      <h2 style="color:#C47B0E">🔑 Reset your password</h2>
+      <p style="color:#5a4a3a;font-size:14px;margin-bottom:24px">
+        We received a request to reset your Budget Bee password. Click the button below to choose a new one.
+        This link expires in <strong>1 hour</strong>.
+      </p>
+      <div style="text-align:center;margin-bottom:24px">
+        <a href="{reset_url}" style="display:inline-block;background:#D4870A;color:#fff;text-decoration:none;
+           padding:14px 28px;border-radius:10px;font-weight:600;font-size:15px">Reset Password →</a>
+      </div>
+      <p style="color:#9A8878;font-size:12px">If the button doesn't work, copy and paste this link into your browser:<br>
+        <a href="{reset_url}" style="color:#D4870A;word-break:break-all">{reset_url}</a></p>
+      <p style="color:#9A8878;font-size:12px;margin-top:16px">If you didn't request this, you can safely ignore this email — your password will not be changed.</p>
+    </div>"""
+    msg = Message(subject=subject, recipients=[to_email], html=body)
+    mail.send(msg)
 
 def login_required(f):
     @wraps(f)
@@ -181,7 +282,7 @@ def register():
         return redirect(url_for("dashboard"))
     if request.method == "POST":
         username = request.form.get("username", "").strip()
-        email    = request.form.get("email", "").strip()
+        email    = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         confirm  = request.form.get("confirm", "")
         if not all([username, email, password, confirm]):
@@ -196,24 +297,97 @@ def register():
             flash("Passwords do not match.", "error")
         else:
             db = get_db()
+            exists = db.execute("SELECT id FROM users WHERE email=? OR username=?", (email, username)).fetchone()
+            db.close()
+            if exists:
+                flash("Username or email already registered.", "error")
+            else:
+                # Stash form data in session, send OTP
+                session["pending_register"] = {
+                    "username": username,
+                    "email":    email,
+                    "password": hash_pw(password)
+                }
+                try:
+                    code = create_otp(email, "register")
+                    send_otp_email(email, code, "register")
+                    return redirect(url_for("verify_register"))
+                except Exception as e:
+                    app.logger.error(f"Mail error: {e}")
+                    flash("Could not send verification email. Check MAIL config in data.py.", "error")
+    return render_template("register.html")
+
+
+@app.route("/verify-register", methods=["GET", "POST"])
+def verify_register():
+    pending = session.get("pending_register")
+    if not pending:
+        return redirect(url_for("register"))
+
+    error = None
+    if request.method == "POST":
+        entered = request.form.get("otp", "").strip()
+        result  = verify_otp(pending["email"], "register", entered)
+
+        if result == "ok":
+            db = get_db()
             try:
                 cur = db.execute(
                     "INSERT INTO users (username, email, password) VALUES (?,?,?)",
-                    (username, email, hash_pw(password))
+                    (pending["username"], pending["email"], pending["password"])
                 )
                 db.commit()
                 new_id = cur.lastrowid
                 db.close()
+                session.pop("pending_register", None)
                 session.permanent   = True
                 session["user_id"]  = new_id
-                session["username"] = username
-                session["email"]    = email
-                flash(f"Account created! Welcome, {username}! 🎉", "success")
+                session["username"] = pending["username"]
+                session["email"]    = pending["email"]
+                flash(f"Account verified! Welcome, {pending['username']}! 🎉", "success")
                 return redirect(url_for("dashboard"))
             except sqlite3.IntegrityError:
                 db.close()
-                flash("Username or email already registered.", "error")
-    return render_template("register.html")
+                error = "Username or email already taken. Please register again."
+        elif result == "expired":
+            error = "Code has expired. Please register again."
+        elif result == "wrong":
+            error = "Incorrect code. Please try again."
+        else:
+            error = "No code found. Please register again."
+
+    return render_template("verify_otp.html", purpose="register",
+                           email=pending["email"], error=error)
+
+
+@app.route("/resend-otp/<purpose>")
+def resend_otp(purpose):
+    if purpose == "register":
+        pending = session.get("pending_register")
+        if not pending:
+            return redirect(url_for("register"))
+        email = pending["email"]
+        redirect_to = url_for("verify_register")
+    elif purpose == "password":
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        db    = get_db()
+        user  = db.execute("SELECT email FROM users WHERE id=?", (session["user_id"],)).fetchone()
+        db.close()
+        email = user["email"]
+        redirect_to = url_for("verify_password_otp")
+    else:
+        return redirect("/")
+
+    try:
+        code = create_otp(email, purpose)
+        send_otp_email(email, code, purpose)
+        flash("A new code has been sent to your email.", "success")
+    except Exception as e:
+        app.logger.error(f"Mail error: {e}")
+        flash("Could not resend. Please try again.", "error")
+
+    return redirect(redirect_to)
 
 
 @app.route("/logout")
@@ -420,25 +594,63 @@ def profile_password():
 
     db   = get_db()
     user = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+    db.close()
 
     if user["password"] != hash_pw(current_password):
-        db.close()
         flash("Current password is incorrect.", "error")
         return redirect(url_for("profile"))
     if len(new_password) < 6:
-        db.close()
         flash("New password must be at least 6 characters.", "error")
         return redirect(url_for("profile"))
     if new_password != confirm_password:
-        db.close()
         flash("New passwords do not match.", "error")
         return redirect(url_for("profile"))
 
-    db.execute("UPDATE users SET password=? WHERE id=?", (hash_pw(new_password), uid))
-    db.commit()
+    # All checks passed — stash hashed new password and send OTP
+    session["pending_pw"] = hash_pw(new_password)
+    try:
+        code = create_otp(user["email"], "password")
+        send_otp_email(user["email"], code, "password")
+        return redirect(url_for("verify_password_otp"))
+    except Exception as e:
+        app.logger.error(f"Mail error: {e}")
+        flash("Could not send verification email. Check MAIL config in data.py.", "error")
+        return redirect(url_for("profile"))
+
+
+@app.route("/profile/verify-password", methods=["GET", "POST"])
+@login_required
+def verify_password_otp():
+    pending_pw = session.get("pending_pw")
+    if not pending_pw:
+        return redirect(url_for("profile"))
+
+    db    = get_db()
+    user  = db.execute("SELECT email FROM users WHERE id=?", (session["user_id"],)).fetchone()
     db.close()
-    flash("Password changed successfully! 🔒", "success")
-    return redirect(url_for("profile"))
+    email = user["email"]
+
+    error = None
+    if request.method == "POST":
+        entered = request.form.get("otp", "").strip()
+        result  = verify_otp(email, "password", entered)
+
+        if result == "ok":
+            db = get_db()
+            db.execute("UPDATE users SET password=? WHERE id=?", (pending_pw, session["user_id"]))
+            db.commit()
+            db.close()
+            session.pop("pending_pw", None)
+            flash("Password changed successfully! 🔒", "success")
+            return redirect(url_for("profile"))
+        elif result == "expired":
+            error = "Code has expired. Request a new one."
+        elif result == "wrong":
+            error = "Incorrect code. Please try again."
+        else:
+            error = "No code found. Please try again."
+
+    return render_template("verify_otp.html", purpose="password", email=email, error=error)
 
 
 @app.route("/profile/delete", methods=["POST"])
@@ -458,10 +670,11 @@ def profile_delete():
 
 @app.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
+    error = None
     if request.method == "POST":
         email = request.form.get("email", "").strip()
         if not email or "@" not in email:
-            flash("Please enter a valid email address.", "error")
+            error = "Please enter a valid email address."
         else:
             db   = get_db()
             user = db.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
@@ -475,16 +688,28 @@ def forgot_password():
                 db.commit()
                 reset_url = url_for("reset_password", token=token, _external=True)
                 db.close()
+<<<<<<< HEAD
 
                 if send_reset_email(user["email"], reset_url):
                  return render_template("forgot_password.html", sent=True)
                 else:
                  flash("Unable to send email.", "error")
                 return render_template("forgot_password.html", sent=None)
+=======
+                try:
+                    send_reset_email(email, reset_url)
+                except Exception as e:
+                    # Email failed to send (e.g. bad SMTP credentials) — log it and
+                    # still fall back to showing the link so nobody gets locked out
+                    # while you're debugging your Gmail App Password setup.
+                    print(f"[WARN] Failed to send password reset email to {email}: {e}")
+                    return render_template("forgot_password.html", sent=reset_url)
+                return render_template("forgot_password.html", sent=True)
+>>>>>>> 350b58bd0753d9d2610757f864cb0a25a3e543bb
             db.close()
             # Don't reveal if email exists — always show success
-            return render_template("forgot_password.html", sent="not_found")
-    return render_template("forgot_password.html", sent=None)
+            return render_template("forgot_password.html", sent=True)
+    return render_template("forgot_password.html", sent=None, error=error)
 
 
 @app.route("/reset-password/<token>", methods=["GET", "POST"])
@@ -495,13 +720,14 @@ def reset_password(token):
     ).fetchone()
     invalid = not reset or datetime.datetime.fromisoformat(reset["expires_at"]) < datetime.datetime.now()
 
+    error = None
     if not invalid and request.method == "POST":
         pw = request.form.get("password", "")
         cf = request.form.get("confirm", "")
         if len(pw) < 6:
-            flash("Password must be at least 6 characters.", "error")
+            error = "Password must be at least 6 characters."
         elif pw != cf:
-            flash("Passwords do not match.", "error")
+            error = "Passwords do not match."
         else:
             db.execute("UPDATE users SET password=? WHERE id=?", (hash_pw(pw), reset["user_id"]))
             db.execute("UPDATE password_resets SET used=1 WHERE token=?", (token,))
@@ -511,7 +737,7 @@ def reset_password(token):
             return redirect(url_for("login"))
 
     db.close()
-    return render_template("reset_password.html", invalid=invalid, token=token)
+    return render_template("reset_password.html", invalid=invalid, token=token, error=error)
 
 
 # ── STATIC PAGES ──────────────────────────────────────────────────────────
