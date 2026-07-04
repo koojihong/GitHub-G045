@@ -356,8 +356,28 @@ body {
   <div class="panel">
     <div class="panel-header">
       <div class="panel-title">My Goals <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:6px">— showing completion status for this month</span></div>
-      <span class="panel-tag" id="goals-tag">0 goals</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="panel-tag" id="goals-tag">0 goals</span>
+        <button type="button" class="btn-add" id="toggle-add-goal-btn" onclick="toggleAddGoalForm()">+ Add Goal</button>
+      </div>
     </div>
+
+    <form id="add-goal-form" class="form-grid" style="display:none;margin-bottom:18px" onsubmit="addGoal(event)">
+      <div class="form-group">
+        <label>Goal Name</label>
+        <input type="text" name="goal_name" placeholder="e.g. New Laptop" required />
+      </div>
+      <div class="form-group">
+        <label>Target (RM)</label>
+        <input type="number" name="target" placeholder="0.00" min="0" step="0.01" required />
+      </div>
+      <div class="form-group">
+        <label>Due Date</label>
+        <input type="date" name="target_date" />
+      </div>
+      <button type="submit" class="btn-add">Add</button>
+    </form>
+
     <div id="goals-container">
       <!-- Ji Hong will populate this with real database data -->
       <div class="empty">
@@ -368,6 +388,17 @@ body {
   </div>
 
 </div><!-- /main -->
+
+<script>
+// ── Add Goal form toggle ───────────────────────────────
+function toggleAddGoalForm() {
+  const form = document.getElementById('add-goal-form');
+  const btn  = document.getElementById('toggle-add-goal-btn');
+  const show = form.style.display === 'none';
+  form.style.display = show ? 'grid' : 'none';
+  btn.textContent    = show ? '✕ Cancel' : '+ Add Goal';
+}
+</script>
 
 <script>
 // ── Sidebar avatar ────────────────────────────────────
@@ -475,13 +506,13 @@ async function loadGoals() {
   const statusTarget = planAmt > 0 ? planAmt : monthlyTarget;
 
   document.getElementById('m-goals').textContent = statusTarget > 0
-    ? 'RM ' + statusTarget.toFixed(2) : goals.length + ' goals';
+    ? 'RM ' + statusTarget.toFixed(2) : monthlyGoals.length + ' goals';
   document.getElementById('m-saved').textContent = 'RM ' + totalSavedActual.toFixed(2);
   const overallPct = statusTarget > 0
     ? Math.min(totalSavedActual / statusTarget * 100, 100)
     : 0;
   document.getElementById('m-done').textContent = overallPct.toFixed(0) + '%';
-  tag.textContent = `${goals.length} goal${goals.length !== 1 ? 's' : ''}`;
+  tag.textContent = `${monthlyGoals.length} goal${monthlyGoals.length !== 1 ? 's' : ''}`;
 
   // ── Saving Status: Actual Saved vs Income Distribution Savings Plan ──
   const statusEl       = document.getElementById('m-status');
@@ -504,12 +535,12 @@ async function loadGoals() {
     }
   }
 
-  if (goals.length === 0) {
-    container.innerHTML = `<div class="empty"><div>🐷</div>No savings goals yet. Add one below!</div>`;
+  if (monthlyGoals.length === 0) {
+    container.innerHTML = `<div class="empty"><div>🐷</div>No savings goals due this month.</div>`;
     return;
   }
 
-  container.innerHTML = `<div class="goals-grid">${goals.map(g => {
+  container.innerHTML = `<div class="goals-grid">${monthlyGoals.map(g => {
     const pct   = g.target_amount > 0 ? Math.min((g.saved_amount / g.target_amount) * 100, 100) : 0;
     const done  = g.saved_amount >= g.target_amount;
     const color = done ? '#2D8A5A' : pct >= 75 ? '#C47B0E' : '#3572B8';
@@ -517,15 +548,17 @@ async function loadGoals() {
     let statusHtml = '';
     if (g.deadline) {
       const dl = new Date(g.deadline);
-      const isThisMonth = dl.getMonth() === parseInt(mo)-1 && dl.getFullYear() === parseInt(yr);
+      const now = new Date();
+      const isViewingRealCurrentMonth =
+        parseInt(mo)-1 === now.getMonth() && parseInt(yr) === now.getFullYear();
+      const isThisMonth = isViewingRealCurrentMonth &&
+        dl.getMonth() === parseInt(mo)-1 && dl.getFullYear() === parseInt(yr);
       if (isThisMonth) {
         if (done) {
           statusHtml = `<span class="goal-status success">✅ Goal met this month!</span>`;
-        } else if (available >= (g.target_amount - g.saved_amount)) {
-          statusHtml = `<span class="goal-status warning">💡 You have enough to complete this!</span>`;
         } else {
-          const shortfall = (g.target_amount - g.saved_amount) - Math.max(available, 0);
-          statusHtml = `<span class="goal-status behind">⚠ RM ${shortfall.toFixed(2)} short this month</span>`;
+          const remaining = g.target_amount - g.saved_amount;
+          statusHtml = `<span class="goal-status behind">⚠ RM ${remaining.toFixed(2)} left to reach this goal</span>`;
         }
       }
     } else if (done) {
@@ -585,6 +618,7 @@ async function addGoal(e) {
     document.querySelector('[name="goal_name"]').value   = '';
     document.querySelector('[name="target"]').value      = '';
     document.querySelector('[name="target_date"]').value = '';
+    toggleAddGoalForm();
     loadGoals();
   } else { alert('Failed to add goal. Are you logged in?'); }
 }
