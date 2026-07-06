@@ -619,8 +619,18 @@ def verify_password_otp():
 def profile_delete():
     uid = session["user_id"]
     db  = get_db()
-    db.execute("DELETE FROM users WHERE id=?", (uid,))
-    db.commit()
+    try:
+        # password_resets has no ON DELETE CASCADE, so it must be
+        # cleared manually or the FK constraint blocks user deletion.
+        db.execute("DELETE FROM password_resets WHERE user_id=?", (uid,))
+        db.execute("DELETE FROM users WHERE id=?", (uid,))
+        db.commit()
+    except sqlite3.IntegrityError as e:
+        db.rollback()
+        app.logger.error(f"Account deletion failed for user {uid}: {e}")
+        flash("We couldn't delete your account due to a database error. Please try again.", "error")
+        db.close()
+        return redirect(url_for("profile"))
     db.close()
     session.clear()
     flash("Your account has been permanently deleted.", "success")
