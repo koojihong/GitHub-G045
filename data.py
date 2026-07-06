@@ -519,31 +519,26 @@ def profile():
 def profile_update():
     uid      = session["user_id"]
     username = request.form.get("username", "").strip()
-    email    = request.form.get("email", "").strip()
 
-    if not username or not email:
-        flash("Username and email cannot be empty.", "error")
+    if not username:
+        flash("Username cannot be empty.", "error")
         return redirect(url_for("profile"))
     if len(username) < 3:
         flash("Username must be at least 3 characters.", "error")
-        return redirect(url_for("profile"))
-    if "@" not in email:
-        flash("Please enter a valid email.", "error")
         return redirect(url_for("profile"))
 
     db = get_db()
     try:
         db.execute(
-            "UPDATE users SET username=?, email=? WHERE id=?",
-            (username, email, uid)
+            "UPDATE users SET username=? WHERE id=?",
+            (username, uid)
         )
         db.commit()
         # Update session so nav shows the new name immediately
         session["username"] = username
-        session["email"]    = email
         flash("Profile updated successfully! ✅", "success")
     except sqlite3.IntegrityError:
-        flash("That username or email is already taken.", "error")
+        flash("That username is already taken.", "error")
     finally:
         db.close()
 
