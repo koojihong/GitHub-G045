@@ -2,10 +2,13 @@ from flask import Flask, redirect, url_for, render_template, request, session, f
 from datetime import timedelta
 import sqlite3, hashlib, secrets, datetime, os
 from functools import wraps
+from dotenv import load_dotenv
 
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+
+load_dotenv()  # loads variables from a local .env file, if present (no effect on Render)
 
 GMAIL_SENDER = os.environ.get("GMAIL_SENDER", "")
 GMAIL_PASSWORD = os.environ.get("GMAIL_PASSWORD", "")
@@ -477,10 +480,10 @@ def forgot_password():
                 db.close()
 
                 if send_reset_email(user["email"], reset_url):
-                 return render_template("forgot_password.html", sent=True)
+                    return render_template("forgot_password.html", sent=reset_url)
                 else:
-                 flash("Unable to send email.", "error")
-                return render_template("forgot_password.html", sent=None)
+                    flash("Unable to send email.", "error")
+                    return render_template("forgot_password.html", sent=reset_url)
             db.close()
             # Don't reveal if email exists — always show success
             return render_template("forgot_password.html", sent="not_found")
