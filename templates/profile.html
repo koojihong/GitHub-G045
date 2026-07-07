@@ -238,6 +238,19 @@ body {
 <!-- MAIN -->
 <div class="main">
 
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div style="padding: 12px; margin-bottom: 20px; border-radius: 8px; font-size: 14px; 
+          background: {{ '#E8F5E9' if category == 'success' else '#FDF0F0' }}; 
+          color: {{ '#2D8A5A' if category == 'success' else '#D64545' }};
+          border: 1px solid {{ 'rgba(45,138,90,0.2)' if category == 'success' else 'rgba(214,69,69,0.2)' }};">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
   <!-- TOPBAR -->
   <div class="topbar">
     <div>
@@ -307,7 +320,7 @@ body {
     <div class="panel-header">
       <div class="panel-title">Change Password</div>
     </div>
-    <form method="POST" action="/profile/password-request">
+    <form method="POST" action="/profile/password">
       <div class="form-group">
         <label>Current Password</label>
         <div class="field-wrap">
